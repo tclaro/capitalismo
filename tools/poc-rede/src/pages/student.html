@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrar em sala — PoC de rede</title>
+<link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+<main class="narrow">
+  <h1>Entrar em sala</h1>
+  <p class="muted" id="subtitle">Modo Aluno · esta página só existe neste computador.</p>
+
+  <section class="card" style="margin-top:16px">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Salas encontradas na rede</h2>
+      <button id="search" class="secondary">Procurar de novo</button>
+    </div>
+    <div id="rooms" style="margin-top:10px"><p class="muted">Procurando…</p></div>
+    <details style="margin-top:8px"><summary class="muted">Detalhes da busca</summary><div id="search-detail" class="muted mono" style="font-size:.85rem"></div></details>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Não apareceu? Digite o endereço</h2>
+    <form id="manual" class="row">
+      <label for="addr">Endereço</label>
+      <input id="addr" placeholder="10.1.2.30:47800" required maxlength="80" autocomplete="off">
+      <button type="submit">Testar</button>
+    </form>
+    <p class="muted">Use o endereço mostrado no painel do professor.</p>
+  </section>
+
+  <div id="status" class="status-big warn" hidden role="status"></div>
+  <section class="card" id="result-card" hidden style="margin-top:16px">
+    <h2>Resultado</h2>
+    <div id="result"></div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Teste de carga</h2>
+    <p class="muted">Abre várias conexões a partir deste computador, para simular uma turma inteira. Faça o teste de conexão antes.</p>
+    <form id="load" class="row" style="margin-top:8px">
+      <label for="n">Conexões</label>
+      <select id="n"><option>10</option><option selected>25</option><option>50</option><option>100</option></select>
+      <label for="dur">Duração</label>
+      <select id="dur"><option value="30">30 s</option><option value="60" selected>60 s</option><option value="120">2 min</option></select>
+      <button type="submit" id="load-btn" disabled>Iniciar teste de carga</button>
+    </form>
+    <p id="load-target" class="muted"></p>
+    <div id="load-status" role="status"></div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Relatório deste computador</h2>
+      <button id="report" class="secondary">Salvar relatório</button>
+    </div>
+    <p id="report-msg" class="muted"></p>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const badge = (cls, t) => `<span class="b ${cls}">${esc(t)}</span>`;
+let target = null;
+let machine = "";
+
+async function post(path, body) {
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+  return data;
+}
+
+async function search() {
+  $("search").disabled = true;
+  $("rooms").innerHTML = '<p class="muted">Procurando salas na rede (cerca de 3 segundos)…</p>';
+  try {
+    const run = await post("/api/procurar");
+    $("search-detail").innerHTML = `Porta UDP ${run.udpPort}. Pergunta enviada para: ${run.sentTo.map(esc).join(", ")}${run.errors.length ? "<br>Erros: " + run.errors.map(esc).join("<br>") : ""}`;
+    if (!run.rooms.length) {
+      $("rooms").innerHTML = '<p>Nenhuma sala respondeu. Confira se o professor já abriu a sala; se sim, use o endereço abaixo.</p>';
+    } else {
+      $("rooms").innerHTML = `<table><thead><tr><th>Sala</th><th>Endereço</th><th>Código</th><th></th></tr></thead><tbody>${run.rooms
+        .map((r, i) => `<tr><td>${esc(r.roomName)}<div class="muted">${esc(r.machine)} · versão ${esc(r.appVersion)}</div></td><td class="mono">${esc(r.ip)}:${r.roomPort ?? "?"}</td><td class="mono">${esc(r.code)}</td><td>${
+          r.compatible && r.roomPort ? `<button data-room="${i}">Conectar e testar</button>` : badge("warn", r.compatible ? "sem porta aberta" : "versão incompatível")
+        }</td></tr>`)
+        .join("")}</tbody></table>`;
+      document.querySelectorAll("[data-room]").forEach((b) =>
+        b.addEventListener("click", () => {
+          const r = run.rooms[Number(b.dataset.room)];
+          test(r.ip, r.roomPort, "udp", r.openPorts);
+        }),
+      );
+    }
+  } catch (e) {
+    $("rooms").innerHTML = `<p>${badge("fail", "✗ erro")} ${esc(e.message)}</p>`;
+  }
+  $("search").disabled = false;
+}
+
+async function test(ip, port, via, openPorts) {
+  const status = $("status");
+  status.hidden = false;
+  status.className = "status-big warn";
+  status.textContent = `Testando ${ip}:${port}…`;
+  $("result-card").hidden = true;
+  try {
+    const t = await post("/api/testar", { ip, port, via, openPorts });
+    const r = t.result;
+    const ok = r.http.ok && r.ws.ok;
+    status.className = "status-big " + (ok ? "ok" : r.http.ok ? "warn" : "fail");
+    status.textContent = ok
+      ? "✓ Conexão OK com o computador do professor."
+      : r.http.ok
+        ? "⚠ HTTP funcionou, mas o tempo real (WebSocket) não."
+        : "✗ Não foi possível falar com o computador do professor.";
+    $("result").innerHTML = `<dl>
+      <dt>HTTP</dt><dd>${r.http.ok ? badge("ok", "✓ ok") + ` ${r.http.ms} ms` : badge("fail", "✗ falhou") + " " + esc(r.http.error)}</dd>
+      <dt>WebSocket</dt><dd>${r.ws.ok ? badge("ok", "✓ ok") + ` ${r.ws.ms} ms` : badge("fail", "✗ falhou") + " " + esc(r.ws.error)}</dd>
+      <dt>Latência</dt><dd>${r.latency ? `média ${r.latency.avg} ms · máx ${r.latency.max} ms` : "—"}</dd>
+      <dt>Portas</dt><dd>${r.ports.map((p) => (p.ok ? badge("ok", p.port + " ✓") : badge("fail", p.port + " ✗"))).join(" ")}</dd>
+      <dt>Enviado ao professor</dt><dd>${t.sentToHost ? badge("ok", "✓ sim") : badge("fail", "✗ não") + " " + esc(t.sendError)}</dd>
+    </dl>${r.http.ok ? `<p style="margin-top:12px"><a class="btn" href="${esc(t.browserUrl)}" target="_blank" rel="noopener">Abrir a sala no navegador</a> <span class="muted">— testa o caminho que o jogo vai usar.</span></p>` : ""}`;
+    $("result-card").hidden = false;
+    if (r.http.ok) {
+      target = { ip, port };
+      $("load-btn").disabled = false;
+      $("load-target").textContent = `Destino: ${ip}:${port}`;
+    }
+  } catch (e) {
+    status.className = "status-big fail";
+    status.textContent = "Erro: " + e.message;
+  }
+}
+
+$("search").addEventListener("click", search);
+$("manual").addEventListener("submit", (e) => {
+  e.preventDefault();
+  let v = $("addr").value.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  const m = v.match(/^([^:]+)(?::(\d+))?$/);
+  if (!m) return;
+  test(m[1], Number(m[2] || 47800), "digitado", null);
+});
+
+let loadPoll = null;
+$("load").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!target) return;
+  $("load-btn").disabled = true;
+  try {
+    await post("/api/carga", { ...target, n: Number($("n").value), durationS: Number($("dur").value) });
+    loadPoll = setInterval(pollLoad, 1000);
+    pollLoad();
+  } catch (err) {
+    $("load-status").innerHTML = badge("fail", "✗") + " " + esc(err.message);
+    $("load-btn").disabled = false;
+  }
+});
+
+async function pollLoad() {
+  const s = await (await fetch("/api/estado", { cache: "no-store" })).json();
+  const l = s.loads[s.loads.length - 1];
+  if (!l) return;
+  const phase = { abrindo: "abrindo conexões…", rodando: "mantendo conexões…", encerrado: "encerrado" }[l.phase];
+  $("load-status").innerHTML = `<dl>
+    <dt>Situação</dt><dd>${esc(phase)}</dd>
+    <dt>Abertas</dt><dd>${l.opened}/${l.requested} (ativas agora: ${l.active})</dd>
+    <dt>Falharam</dt><dd>${l.failed ? badge("fail", l.failed) : 0}</dd>
+    <dt>Caíram</dt><dd>${l.drops ? badge("fail", l.drops) : 0}</dd>
+    <dt>Latência</dt><dd>${l.latency ? `média ${l.latency.avg} ms · p95 ${l.latency.p95} ms · máx ${l.latency.max} ms` : "—"}</dd>
+    ${l.errors.length ? `<dt>Erros</dt><dd>${l.errors.map(esc).join("<br>")}</dd>` : ""}
+    ${l.phase === "encerrado" ? `<dt>Resumo ao professor</dt><dd>${l.sentToHost ? badge("ok", "✓ enviado") : badge("fail", "✗ não enviado")}</dd>` : ""}
+  </dl>`;
+  if (l.phase === "encerrado") {
+    clearInterval(loadPoll);
+    $("load-btn").disabled = false;
+  }
+}
+
+$("report").addEventListener("click", async () => {
+  try {
+    const r = await post("/api/relatorio");
+    $("report-msg").innerHTML = `Salvo em <span class="mono">${esc(r.txt)}</span>`;
+  } catch (e) {
+    $("report-msg").textContent = "Não foi possível salvar: " + e.message;
+  }
+});
+
+(async () => {
+  try {
+    const s = await (await fetch("/api/estado", { cache: "no-store" })).json();
+    machine = s.machine;
+    $("subtitle").textContent = `Modo Aluno · ${s.machine} · versão ${s.appVersion} · esta página só existe neste computador.`;
+    $("report-msg").innerHTML = `Os relatórios ficam em <span class="mono">${esc(s.reportDir)}</span>`;
+  } catch {}
+  search();
+})();
+</script>
+</body>
+</html>

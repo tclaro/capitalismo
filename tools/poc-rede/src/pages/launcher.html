@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoC de rede</title>
+<link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+<main class="narrow">
+  <h1>Teste de rede do Simulador de Mercado</h1>
+  <p class="muted">Prova de conceito: verifica se este programa roda aqui e se os alunos conseguem se conectar ao computador do professor. Nada é instalado nem alterado.</p>
+  <div class="choices">
+    <button class="choice" data-mode="professor">Criar sala — Professor<small>Use no computador do professor. Abre a sala e mostra quem se conectou.</small></button>
+    <button class="choice secondary" data-mode="aluno">Entrar em sala — Aluno<small>Use no computador do aluno. Procura salas na rede e testa a conexão.</small></button>
+  </div>
+  <p id="msg" class="muted" role="status" style="margin-top:18px"></p>
+</main>
+<script>
+document.querySelectorAll("[data-mode]").forEach((b) => {
+  b.addEventListener("click", async () => {
+    const msg = document.getElementById("msg");
+    document.querySelectorAll("[data-mode]").forEach((x) => (x.disabled = true));
+    msg.textContent = "Iniciando…";
+    try {
+      const res = await fetch("/api/modo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: b.dataset.mode }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.status);
+      location.href = data.url;
+    } catch (e) {
+      msg.textContent = "Não foi possível iniciar: " + e.message + ". Veja a janela preta do programa.";
+    }
+  });
+});
+</script>
+</body>
+</html>

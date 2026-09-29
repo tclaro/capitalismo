@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sala — PoC de rede</title>
+<link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+<main>
+  <div class="row" style="justify-content:space-between">
+    <div>
+      <h1 id="title">Sala</h1>
+      <p class="muted" id="subtitle">Modo Professor · carregando…</p>
+    </div>
+    <div class="row">
+      <button id="report">Gerar relatório</button>
+    </div>
+  </div>
+  <p id="report-msg" role="status" class="muted"></p>
+
+  <section class="hero" aria-label="Como os alunos entram">
+    <p class="muted">Alunos sem o programa: digitar no navegador</p>
+    <div class="row" style="gap:28px">
+      <div><div class="addr" id="addr">—</div><div class="muted" id="addr-others"></div></div>
+      <div><div class="muted">Código da sala</div><div class="code" id="code">—</div></div>
+    </div>
+  </section>
+
+  <section class="answers" aria-label="Respostas da PoC" id="answers"></section>
+
+  <div class="grid">
+    <section class="card wide">
+      <h2>Alunos conectados</h2>
+      <div id="clients"></div>
+    </section>
+    <section class="card">
+      <h2>Portas</h2>
+      <div id="ports"></div>
+    </section>
+    <section class="card">
+      <h2>Teste de carga</h2>
+      <div id="load"></div>
+    </section>
+    <section class="card">
+      <h2>Este computador</h2>
+      <div id="sys"></div>
+    </section>
+    <section class="card">
+      <h2>Rede e firewall</h2>
+      <div id="net"></div>
+    </section>
+    <section class="card">
+      <h2>Descoberta UDP — perguntas recebidas</h2>
+      <div id="udp"></div>
+    </section>
+    <section class="card">
+      <h2>Registro</h2>
+      <div class="log" id="log"></div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const badge = (cls, text) => `<span class="b ${cls}">${esc(text)}</span>`;
+const yes = (b) => (b === true ? badge("ok", "✓ sim") : b === false ? badge("fail", "✗ não") : badge("neutral", "? não verificado"));
+const time = (iso) => (iso ? new Date(iso).toLocaleTimeString("pt-BR") : "—");
+const lat = (s) => (s ? `${s.avg} ms (máx ${s.max})` : "—");
+
+function answer(q, cls, a, detail) {
+  return `<div class="answer"><div class="q">${esc(q)}</div><div class="a">${badge(cls, a)}</div>${detail ? `<div class="muted">${esc(detail)}</div>` : ""}</div>`;
+}
+
+function render(s) {
+  document.title = `${s.roomName} — PoC de rede`;
+  $("title").textContent = s.roomName;
+  $("subtitle").textContent = `Modo Professor · ${s.machine} · versão ${s.appVersion} · aberta às ${time(s.startedAt)}`;
+  const addrs = s.primaryPort ? s.addresses.map((a) => `http://${a.address}:${s.primaryPort}`) : [];
+  $("addr").textContent = addrs[0] || "nenhuma porta abriu";
+  $("addr-others").innerHTML = addrs.length > 1 ? "Outros endereços deste computador: " + addrs.slice(1).map(esc).join(" · ") : "";
+  $("code").textContent = s.code;
+
+  const sum = s.summary;
+  const reached = sum.portsReached.filter((p) => p.machines > 0).map((p) => p.port);
+  $("answers").innerHTML = [
+    answer("1. O programa roda no professor?", "ok", "✓ Sim", "Este painel está aberto."),
+    sum.studentMachines.length
+      ? answer("2. Os alunos conectam?", "ok", `✓ Sim — ${sum.studentMachines.length} máquina(s)`, reached.length ? `Portas alcançadas: ${reached.join(", ")}` : "")
+      : answer("2. Os alunos conectam?", "warn", "… nenhuma máquina ainda", "Se já tentaram e nada aparece, o firewall está bloqueando."),
+    !s.udp.ok
+      ? answer("3. Descoberta automática (UDP)", "fail", "✗ porta UDP não abriu", s.udp.error)
+      : sum.udpQueryIps.length
+        ? answer("3. Descoberta automática (UDP)", "ok", `✓ ${sum.udpQueryIps.length} máquina(s) perguntaram`, `${sum.udpConnectedIps.length} conectaram pela lista`)
+        : answer("3. Descoberta automática (UDP)", "warn", "… nenhuma pergunta ainda", ""),
+    answer("4. Teste de carga", s.load.drops ? "fail" : s.load.peak ? "ok" : "neutral", `pico ${s.load.peak} · ${s.load.drops} queda(s)`, `${s.load.active} conexões ativas agora`),
+  ].join("");
+
+  const clients = [...s.clients].filter((c) => c.external).concat(s.clients.filter((c) => !c.external));
+  $("clients").innerHTML = clients.length
+    ? `<table><thead><tr><th>Máquina</th><th>IP</th><th>Tipo</th><th>Como achou</th><th>HTTP</th><th>WebSocket</th><th>Portas</th><th>Latência</th><th>Agora</th></tr></thead><tbody>${clients
+        .map((c) => {
+          const r = c.result;
+          const ports = r ? r.ports.map((p) => (p.ok ? badge("ok", `${p.port} ✓`) : badge("fail", `${p.port} ✗`))).join(" ") : "—";
+          return `<tr><td>${esc(c.machine)}${c.external ? "" : ' <span class="muted">(este computador)</span>'}</td><td class="mono">${esc(c.ip)}</td><td>${c.kind === "navegador" ? "navegador" : "executável"}</td><td>${c.via === "udp" ? "lista UDP" : "endereço digitado"}</td><td>${r ? yes(r.http.ok) : badge("neutral", "…")}</td><td>${r ? yes(r.ws.ok) : c.openSockets ? badge("ok", "✓ sim") : badge("neutral", "…")}</td><td>${ports}</td><td>${lat(c.live || r?.latency)}</td><td>${c.openSockets ? badge("ok", "● conectado") : badge("neutral", "desconectado")}</td></tr>`;
+        })
+        .join("")}</tbody></table>`
+    : '<p class="muted">Ninguém conectou ainda. Nos computadores dos alunos, abra o programa no modo Aluno ou digite o endereço acima no navegador.</p>';
+
+  $("ports").innerHTML = `<table><thead><tr><th>Porta</th><th>Aqui</th><th>Outras máquinas que chegaram</th></tr></thead><tbody>${s.ports
+    .map((p) => `<tr><td class="mono">TCP ${p.port}</td><td>${p.ok ? badge("ok", "✓ aberta") : badge("fail", "✗ " + (p.error || "falhou"))}</td><td>${p.ok ? (p.externalIps.length ? `${p.externalIps.length}: <span class="mono">${p.externalIps.map(esc).join(", ")}</span>` : '<span class="muted">nenhuma</span>') : ""}</td></tr>`)
+    .join("")}<tr><td class="mono">UDP ${s.udp.port}</td><td>${s.udp.ok ? badge("ok", "✓ aberta") : badge("fail", "✗ " + (s.udp.error || "falhou"))}</td><td class="muted">descoberta</td></tr></tbody></table>`;
+
+  const L = s.load;
+  $("load").innerHTML = `<dl><dt>Ativas agora</dt><dd>${L.active}</dd><dt>Pico</dt><dd>${L.peak}${L.peakAt ? ` às ${time(L.peakAt)}` : ""}</dd><dt>Total aberto</dt><dd>${L.total}</dd><dt>Quedas</dt><dd>${L.drops ? badge("fail", L.drops) : L.drops}</dd></dl>${
+    L.summaries.length
+      ? `<table style="margin-top:10px"><thead><tr><th>Máquina</th><th>Abertas</th><th>Falhas</th><th>Quedas</th><th>Latência</th></tr></thead><tbody>${L.summaries
+          .map((x) => `<tr><td>${esc(x.machine)}</td><td>${x.opened}/${x.requested}</td><td>${x.failed}</td><td>${x.drops}</td><td>${lat(x.latency)}</td></tr>`)
+          .join("")}</tbody></table>`
+      : '<p class="muted">No computador do aluno, use o botão "Teste de carga".</p>'
+  }`;
+
+  const y = s.sys;
+  $("sys").innerHTML = y
+    ? `<dl><dt>Máquina</dt><dd>${esc(y.hostname)}</dd><dt>Usuário</dt><dd>${esc(y.user)}</dd><dt>Administrador</dt><dd>membro: ${yes(y.admin.member)} · elevado: ${yes(y.admin.elevated)}</dd><dt>Domínio</dt><dd>${y.domain ? (y.domain.partOfDomain ? "sim — " + esc(y.domain.name) : "não — " + esc(y.domain.name)) : "—"}</dd><dt>Windows</dt><dd>${esc(y.osName)} (build ${esc(y.osBuild)})</dd><dt>AppLocker</dt><dd>${y.appLockerPolicy === true ? badge("warn", "política presente") : y.appLockerPolicy === false ? "sem política" : "—"}</dd><dt>Executável</dt><dd class="mono">${esc(y.execPath)}</dd></dl>${y.errors.length ? `<p class="muted">Avisos: ${y.errors.map(esc).join("<br>")}</p>` : ""}`
+    : '<p class="muted">Coletando informações…</p>';
+
+  $("net").innerHTML = y
+    ? `<table><thead><tr><th>Interface</th><th>IPv4</th><th>Sub-rede</th></tr></thead><tbody>${y.interfaces
+        .filter((i) => !i.internal)
+        .map((i) => `<tr><td>${esc(i.name)}</td><td class="mono">${esc(i.address)}</td><td class="mono">${esc(i.cidr)}</td></tr>`)
+        .join("")}</tbody></table>
+      <p style="margin-top:10px"><strong>Perfil de rede:</strong> ${y.profiles ? y.profiles.map((p) => `${esc(p.alias)}: ${p.category === "Public" ? badge("warn", "Público") : p.category === "Private" ? badge("ok", "Privado") : p.category === "DomainAuthenticated" ? badge("ok", "Domínio") : esc(p.category)}`).join(" · ") : "não foi possível ler"}</p>
+      <p><strong>Firewall:</strong></p>${
+        y.firewall
+          ? `<table><thead><tr><th>Perfil</th><th>Ativo</th><th>Entrada padrão</th><th>Regras locais</th></tr></thead><tbody>${y.firewall
+              .map((f) => `<tr><td>${esc(f.name)}</td><td>${esc(f.enabled)}</td><td>${esc(f.defaultInbound)}</td><td>${esc(f.allowInboundRules)}</td></tr>`)
+              .join("")}</tbody></table>`
+          : y.firewallRaw
+            ? `<pre class="log">${esc(y.firewallRaw)}</pre>`
+            : '<p class="muted">não foi possível ler</p>'
+      }`
+    : '<p class="muted">Coletando informações…</p>';
+
+  const byIp = new Map();
+  for (const d of s.discoveries) byIp.set(d.ip, { ...d, n: (byIp.get(d.ip)?.n || 0) + 1 });
+  $("udp").innerHTML = byIp.size
+    ? `<table><thead><tr><th>IP</th><th>Máquina</th><th>Perguntas</th><th>Última</th></tr></thead><tbody>${[...byIp.values()]
+        .map((d) => `<tr><td class="mono">${esc(d.ip)}</td><td>${esc(d.machine)}${d.external ? "" : ' <span class="muted">(este computador)</span>'}</td><td>${d.n}</td><td>${time(d.at)}</td></tr>`)
+        .join("")}</tbody></table>`
+    : '<p class="muted">Nenhuma pergunta recebida ainda.</p>';
+
+  const logEl = $("log");
+  const atBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 20;
+  logEl.textContent = s.log.map((e) => `${time(e.at)}  ${e.msg}`).join("\n");
+  if (atBottom) logEl.scrollTop = logEl.scrollHeight;
+}
+
+async function refresh() {
+  try {
+    const res = await fetch("/api/estado", { cache: "no-store" });
+    render(await res.json());
+  } catch (e) {
+    $("subtitle").textContent = "Sem contato com o programa. A janela preta foi fechada?";
+  }
+}
+refresh();
+setInterval(refresh, 1000);
+
+$("report").addEventListener("click", async () => {
+  const msg = $("report-msg");
+  msg.textContent = "Gerando…";
+  try {
+    const res = await fetch("/api/relatorio", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    msg.innerHTML = `Relatório salvo em <span class="mono">${esc(data.txt)}</span> e <span class="mono">${esc(data.json)}</span>`;
+  } catch (e) {
+    msg.textContent = "Não foi possível salvar: " + e.message;
+  }
+});
+</script>
+</body>
+</html>

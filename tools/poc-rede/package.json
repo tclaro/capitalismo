@@ -1,0 +1,18 @@
+{
+  "name": "poc-rede",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Prova de conceito de rede do Simulador de Mercado (seção 9.9 do documento de design)",
+  "scripts": {
+    "dev": "bun src/main.ts",
+    "professor": "bun src/main.ts --professor",
+    "aluno": "bun src/main.ts --aluno",
+    "typecheck": "tsc --noEmit",
+    "build": "bun build src/main.ts --compile --target=bun-windows-x64-baseline --outfile dist/poc-rede.exe --windows-title \"PoC de rede\" --windows-description \"Teste de rede do Simulador de Mercado\" --windows-version 0.1.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "typescript": "^7.0.2"
+  }
+}
