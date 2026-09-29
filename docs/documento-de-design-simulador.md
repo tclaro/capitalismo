@@ -2,7 +2,7 @@
 
 > **Nome provisório:** Simulador de Mercado (inspirado em *Capitalism*, Enlight Software, 1995)
 > **Autor:** Thiago Claro — Fractal Data
-> **Versão:** 0.5 — setembro de 2026 (servidor próprio portátil, rede local; PoC de rede antes da fase 0; diretrizes de design)
+> **Versão:** 0.6 — setembro de 2026 (resultado da PoC de rede; modo B — servidor fixo — adotado como padrão na instituição; acesso remoto do professor por chave e PIN; estado persistido em disco a cada tick)
 > **Status:** visão e requisitos aprovados; plano de implementação a ser produzido
 > **Anexo:** `docs/arvore-de-produtos.md` — lista completa de produtos, cadeias e calendário agrícola
 
@@ -17,7 +17,7 @@ Este é um **documento de visão e requisitos**, não um plano de implementaçã
 3. Trate todas as fórmulas da seção 6 como **hipóteses iniciais parametrizadas**, não como verdades. O balanceamento (seção 10) vai ajustá-las.
 4. Respeite os **princípios de arquitetura** da seção 3. Em especial: o motor de simulação é uma função pura, determinística e separada da interface e do banco.
 5. Interface e textos voltados ao usuário em **português do Brasil**. Código, nomes de tabelas e identificadores podem ficar em inglês ou português — decidir e manter um padrão (ver seção 15).
-6. **Arquitetura: servidor próprio portátil** (Bun + SQLite, seção 9), rodando na rede local do laboratório a partir do computador do professor. **Não usar Supabase nem outro serviço externo.** Tudo é desenvolvido e testado localmente, sem contas ou chaves; o entregável é um executável `.exe` que não exige instalação nem administrador.
+6. **Arquitetura: servidor próprio portátil** (Bun + SQLite, seção 9), rodando na rede local da instituição. **Na instituição do autor, o padrão é o modo B** (seção 9.1): o servidor roda numa máquina fixa, separada do computador do professor, e o professor, o telão e os alunos acessam pelo navegador. O modo A (servidor no computador do professor) continua suportado pela mesma base de código. **Não usar Supabase nem outro serviço externo.** Tudo é desenvolvido e testado localmente, sem contas externas; o entregável é um executável `.exe` que não exige instalação nem administrador.
 7. A árvore de produtos e o calendário agrícola estão no anexo `docs/arvore-de-produtos.md`. Os valores numéricos iniciais de receitas e pesos de qualidade podem ser consultados no Apêndice B do manual do Capitalism II (link na seção 17).
 
 ---
@@ -37,7 +37,7 @@ Ferramenta **didática e competitiva** para cursos de Administração, usada em 
 - Nenhuma estratégia única domina: equipes com abordagens diferentes (preço baixo, premium, marca forte) podem vencer, dependendo da execução.
 - O professor consegue conduzir o debate final com os relatórios gerados pela ferramenta.
 - A ferramenta pode ser **reutilizada em outras disciplinas**, ativando módulos diferentes.
-- **Qualquer professor da instituição** consegue usar sozinho: abre o executável, cria a sala, e os alunos entram sem digitar IP.
+- **Qualquer professor da instituição** consegue usar sozinho: abre o endereço do servidor no navegador, cria a sala, e os alunos entram com o endereço e o código da sala exibidos no telão.
 
 ---
 
@@ -49,7 +49,7 @@ Ferramenta **didática e competitiva** para cursos de Administração, usada em 
 | **Equipe** | 3 a 5 alunos | Dirige uma empresa: toma decisões, acompanha relatórios, compete pelo mercado |
 | **Robô (opcional)** | Concorrente automático | Completa o mercado quando há poucas equipes |
 
-**Cenário típico:** laboratório com 20 a 50 alunos em computadores desktop, professor com projetor. Todos na mesma sala, ao mesmo tempo, na **rede local do laboratório**; o computador do professor é o servidor da aula.
+**Cenário típico:** laboratório com 20 a 50 alunos em computadores desktop, professor com projetor. Todos na mesma sala, ao mesmo tempo, na **rede local da instituição**. O servidor é uma máquina fixa (modo B, seção 9.1); o computador do professor, o do projetor e os dos alunos só usam o navegador.
 
 **Dimensionamento recomendado:**
 
@@ -73,7 +73,7 @@ Ferramenta **didática e competitiva** para cursos de Administração, usada em 
 6. **Decisões persistentes.** Como no jogo original, uma decisão (ex.: preço) vale até ser alterada. Os alunos não precisam reenviar tudo a cada tick.
 7. **Nunca eliminar uma equipe.** Falência gera consequências (crédito emergencial caro, penalidade de pontuação), mas a equipe continua jogando. Eliminar alunos no meio da aula mata o engajamento.
 8. **Uso legal limpo (*clean-room*).** Replicamos conceitos, comportamentos, a lista de produtos e as cadeias de produção (que refletem o mundo real: queijo vem do leite, couro vem do gado). Os números do manual (quantidades, pesos) servem só como **ponto de partida da calibração**. **Nunca** copiar arte, textos, mapas ou código do jogo original, nem redistribuir o manual.
-9. **Produto portátil, sem dependência de hospedagem.** Qualquer professor da instituição roda a ferramenta no laboratório sem instalar nada, sem ser administrador e sem internet (após a liberação única da TI, seção 9.5).
+9. **Produto portátil, sem dependência de hospedagem.** O servidor é um executável que roda sem instalação e sem internet. Professores e alunos não instalam nada e não precisam ser administradores: usam só o navegador (modo B) ou, no modo A, o executável após a liberação única da TI (seção 9.5).
 10. **Uma base de código para todos os modos** (rede local, servidor fixo, online — seção 9.1). Nada no servidor pode depender de estar numa rede local.
 
 ---
@@ -387,7 +387,7 @@ Enquanto pausado, os alunos **podem** revisar decisões (configurável: permitir
 ### 7.2 Demais funções do painel
 
 - **Criar partida:** nome, preset de parâmetros, módulos ativos, número de mercados, produtos, duração alvo, pontuação, visibilidade do ranking, número de robôs.
-- **Sala:** ao criar a partida, a sala aparece automaticamente na lista do programa dos alunos; o painel e o telão também exibem **endereço + código da sala** como alternativa. Montagem ou confirmação das equipes.
+- **Sala:** ao criar a partida, o painel e o telão exibem **endereço + código da sala**, que os alunos digitam no navegador. No modo A, a sala também aparece na lista do programa dos alunos (descoberta UDP, seção 9.4). Montagem ou confirmação das equipes.
 - **Salvar / abrir partida** como arquivo (retomar na aula seguinte, compartilhar com colegas) e **diagnóstico de rede** (seção 9.5).
 - **Visão geral ao vivo:** todas as empresas de todos os mercados — caixa, lucro, participação, notas, marca, qualidade.
 - **Eventos:** disparar agora ou agendar (ex.: recessão, alta do insumo, novo imposto, entrada de um concorrente robô, aumento da população, safra ruim ou geada, descoberta de nova jazida, alta do petróleo no fornecedor externo). Cada evento tem um texto explicativo exibido aos alunos.
@@ -409,7 +409,7 @@ Enquanto pausado, os alunos **podem** revisar decisões (configurável: permitir
 
 Desktop em primeiro lugar (laboratório); layout responsivo desejável, não obrigatório.
 
-- **Entrada:** pela lista de salas encontradas na rede (executável do aluno) ou pelo navegador com endereço + código da sala; depois, nome/apelido + equipe.
+- **Entrada:** pelo navegador com endereço + código da sala (ou, no modo A, pela lista de salas encontradas pelo executável do aluno); depois, nome/apelido + equipe.
 - **Painel da empresa:** caixa, lucro do mês, participação por produto, nota do produto comparada aos concorrentes (decomposta em preço/qualidade/marca, como as barras coloridas do Capitalism), estoque, capacidade usada.
 - **Decisões** (formulários claros, com valores atuais preenchidos e ajuda contextual):
   - por produto: comprar pronto × fabricar, preço, quantidade a produzir/comprar por mês, verba de publicidade, verba de P&D;
@@ -461,8 +461,8 @@ Desktop em primeiro lugar (laboratório); layout responsivo desejável, não obr
 ### 9.0 Visão geral
 
 - **Produto único e portátil:** um executável que contém o servidor (em TypeScript, compilado com **Bun**), o motor, o banco **SQLite** e as telas web.
-- **Sem hospedagem obrigatória e sem serviços externos:** na rede local, o computador do professor é o servidor da aula. Não há contas, cotas nem dependência de internet.
-- **Os alunos usam só o navegador.** As telas vêm do servidor da aula. O executável no computador do aluno é opcional e serve apenas para **encontrar a sala** na rede (seção 9.4).
+- **Sem hospedagem obrigatória e sem serviços externos:** na rede local, o servidor roda numa máquina fixa da instituição (modo B, padrão) ou no computador do professor (modo A). Não há contas externas, cotas nem dependência de internet.
+- **Professor, telão e alunos usam só o navegador.** As telas vêm do servidor. No modo A, o executável no computador do aluno é opcional e serve apenas para **encontrar a sala** na rede (seção 9.4).
 - **Os computadores dos alunos não conversam entre si e não calculam nada.** Eles mostram as telas e enviam decisões; tudo passa pelo servidor, que é a fonte da verdade.
 - **Uma base de código para todos os modos de implantação** (seção 9.1): rede local, servidor fixo da instituição ou online.
 
@@ -479,11 +479,30 @@ Como o cálculo e a validação ficam no servidor, um aluno não consegue altera
 
 | Modo | Onde roda o servidor | Quando usar | O que exige |
 |---|---|---|---|
-| **A — Sala no computador do professor** (padrão) | No computador do professor, no laboratório | Uso normal em aula | Liberação única da TI (seção 9.5) |
-| **B — Servidor fixo da instituição** | Numa máquina fixa do laboratório ou num servidor da instituição, com o mesmo executável | Se a TI preferir centralizar; nenhum requisito na máquina do professor | A TI instala e mantém a máquina |
-| **C — Online** (contingência) | O mesmo servidor numa hospedagem na internet com disco persistente e HTTPS | Ensino remoto (ex.: nova pandemia) ou se a TI não colaborar de forma alguma | Hospedagem (instituição ou autor), login de professores (seção 9.6) |
+| **A — Sala no computador do professor** | No computador do professor, no laboratório | Instituições em que a TI libera a porta de entrada nas máquinas de professor | Liberação única da TI (seção 9.5) |
+| **B — Servidor fixo da instituição** (**padrão na instituição do autor**) | Numa máquina fixa da rede da instituição, com o mesmo executável | Uso normal em aula; nenhum requisito nas máquinas do professor, do projetor e dos alunos | Uma máquina com administrador local para a regra de firewall de entrada (seção 9.1.1) |
+| **C — Online** (contingência) | O mesmo servidor numa hospedagem na internet com disco persistente e HTTPS | Ensino remoto (ex.: nova pandemia) | Hospedagem (instituição ou autor), login de professores (seção 9.6) |
 
 O modo C não é prioridade (roadmap, fase 5), mas o código deve nascer compatível com ele: nada no servidor pode depender de estar numa rede local, e a descoberta de sala é um recurso adicional, não obrigatório.
+
+**Motivo da escolha do modo B** (PoC de rede, seção 9.9): nas máquinas de laboratório o professor não é administrador e o firewall bloqueia conexões de entrada, então o modo A exigiria uma regra da TI em todas as máquinas de professor. No modo B, só o servidor recebe conexões; o painel do professor, o telão e os alunos abrem conexões de **saída**, que o firewall do Windows permite por padrão.
+
+#### 9.1.1 Modo B na instituição do autor
+
+```
+ [Painel do professor] ──┐
+ [Telão / projetor]    ──┼──►  Servidor fixo (laboratório do centro de pesquisa)
+ [Equipes de alunos]   ──┘     HTTP + WebSocket · motor · relógio · SQLite
+```
+
+- **Máquina:** computador fixo num laboratório do centro de pesquisa, com administrador local. Roda o mesmo executável do produto em modo servidor (ex.: `simulador.exe --servidor`), sem tela inicial e sem abrir navegador.
+- **Firewall:** uma regra de entrada **por porta** (TCP 47800, perfis Domínio e Privado), criada uma vez por quem administra essa máquina. Nenhuma regra nas demais máquinas.
+- **Servidor autoritativo, não repassador:** o motor, o relógio, a validação e o estado ficam no servidor (seção 9.0). O painel do professor e o telão são apenas telas: fechar a aba do professor, trocar de computador ou reiniciar o projetor não afeta a partida.
+- **Várias salas simultâneas:** o servidor atende várias turmas ao mesmo tempo, cada uma com seu código de sala. Os dados de uma sala nunca aparecem em outra (regras de acesso da seção 9.6).
+- **Endereço:** os alunos digitam o endereço do servidor + código da sala. O endereço deve ser estável (reserva de DHCP ou nome da máquina no domínio) para poder ser impresso no laboratório ou salvo nos favoritos.
+- **Disponibilidade:** a máquina fica permanentemente ligada no centro de pesquisa; o servidor é iniciado manualmente. Início automático e monitoramento ficam fora do escopo por ora.
+- **Estado persistido em disco a cada tick** (seção 9.7): se o servidor reiniciar, todas as salas voltam pausadas no último tick processado.
+- **Alcance:** validado entre o laboratório de aula e o laboratório do centro de pesquisa (sub-redes diferentes). Cada novo laboratório onde o simulador for usado precisa de um teste de conexão pelo navegador (`/teste`, seção 9.9) antes da primeira aula.
 
 ### 9.2 Componentes
 
@@ -494,7 +513,7 @@ O modo C não é prioridade (roadmap, fase 5), mas o código deve nascer compat�
 | Frontend | React + TypeScript + Vite (a confirmar), **embutido no executável** | Telas do aluno, do professor, do telão e a tela inicial (criar sala / entrar em sala) |
 | Motor | Pacote TypeScript puro | Processar ticks |
 | Tempo real | WebSocket nativo do Bun | Avisar os clientes (tick, pausa, eventos) |
-| Descoberta | UDP (pergunta e resposta, seção 9.4) | Encontrar salas na rede sem digitar IP |
+| Descoberta (modo A) | UDP (pergunta e resposta, seção 9.4) | Encontrar salas na rede sem digitar IP |
 | Empacotamento | `bun build --compile` | Um único `.exe` para Windows (Linux/macOS opcionais por compilação cruzada) |
 | Balanceamento | Mesmo pacote do motor, CLI em Bun | Simulações em massa com robôs |
 
@@ -528,6 +547,7 @@ Por que pergunta e resposta, e não anúncio: o Windows aceita respostas a uma p
 
 Detalhes:
 - O broadcast só alcança a mesma sub-rede. Laboratórios em VLANs separadas ou Wi-Fi com isolamento entre clientes dependem da alternativa acima.
+- **No modo B a descoberta não se aplica:** o servidor fica em outra sub-rede (confirmado na PoC, seção 9.9), então a entrada é sempre por endereço + código. A descoberta continua disponível para o modo A.
 - Várias salas na mesma rede aparecem todas na lista; salas de versão incompatível aparecem desabilitadas, com aviso.
 - Portas padrão configuráveis (sugestão: TCP 47800 para HTTP/WebSocket e UDP 47801 para descoberta — a confirmar, seção 15).
 
@@ -535,17 +555,25 @@ Detalhes:
 
 - **Sem instalação e sem administrador:** o executável roda de qualquer pasta (pendrive, Documentos, área de trabalho). Servir numa porta acima de 1024 não exige administrador.
 - **Computador do professor (modo A):** o Windows Firewall bloqueia conexões de entrada até existir uma regra, e só administrador aprova. A TI cria **uma vez**, em todas as máquinas do laboratório, uma regra **por porta** (TCP da sala e UDP da descoberta, perfis Domínio/Privado). Regra por porta, e não por programa, porque um executável portátil muda de pasta.
+- **Servidor fixo (modo B):** a mesma regra por porta (só TCP da sala; UDP não é usado), apenas na máquina servidora. Computadores do professor, do projetor e dos alunos não precisam de nada.
 - **Bloqueio de executáveis (AppLocker e similares):** se existir, a TI libera o executável. Com **assinatura digital de código**, a TI pode liberar por editor e as versões futuras continuam liberadas (decisão em aberto, seção 15).
 - **Computadores dos alunos:** nada é necessário para o navegador. O executável do aluno usa só `localhost` e perguntas UDP de saída; se ele for bloqueado, o aluno usa endereço + código.
 - **Guia para a TI:** documento de uma página em `/docs/guia-ti.md` (entregue na fase 1) com exatamente essas configurações, as portas e como testar.
 - **Diagnóstico de rede no painel do professor:** mostra os endereços do servidor, verifica se a porta está acessível a partir de outra máquina (via página de teste que o aluno abre) e explica o que pedir à TI se não estiver.
 - **Pode ser que nada disso seja necessário:** muitos laboratórios já permitem as duas coisas. A PoC de rede (seção 9.9) responde isso antes de envolver a TI.
-- **Se a TI não colaborar de forma alguma:** modo B (se ela aceitar só uma máquina) ou modo C (online).
+- **Se a TI não liberar as máquinas de professor:** modo B (uma única máquina com a regra) ou modo C (online). Na instituição do autor, esse foi o caso, e o modo B foi adotado.
 
 ### 9.6 Autenticação e segurança
 
 **Rede local (modos A e B):**
-- Não há contas. Quem inicia a sala é o professor dela. O painel do professor fica acessível **no próprio computador host**; acesso de outro computador (ex.: o do projetor) só com um **PIN** gerado ao criar a sala.
+- Não há contas individuais de professor. Três papéis por sala: **professor** (controle total), **telão** (somente leitura, sem dados privados das equipes salvo decisão do professor) e **aluno** (só a própria equipe).
+- **Modo A:** quem inicia a sala é o professor dela. O painel fica acessível no próprio computador host; acesso de outro computador (ex.: o do projetor) só com o **PIN do professor** da sala.
+- **Modo B:** o professor nunca está no computador servidor, então todo acesso de professor é pela rede:
+  - **Criar sala** exige a **chave de professor** do servidor, definida por quem administra a máquina servidora e repassada aos professores da instituição. Sem ela, um aluno não consegue criar salas nem ocupar o servidor. Guardada como hash (`Bun.password`); pode ser trocada sem perder as partidas.
+  - Ao criar a sala, o servidor gera o **PIN do professor** (aleatório, ex.: 6 dígitos) e o **link do telão**. O PIN reabre o painel de qualquer computador (ex.: se o navegador fechar ou o professor mudar de máquina); o link do telão leva a um token próprio, só de leitura, que pode ser revogado e regenerado pelo painel.
+  - A sessão do professor fica num cookie `HttpOnly`; reabrir o painel no mesmo navegador não pede o PIN de novo durante a validade da sessão.
+  - **Limite de tentativas** para a chave de professor, o PIN e o código da sala (por IP e por sala), com espera crescente após erros.
+  - A administração do servidor (listar, encerrar e excluir salas de todos os professores; trocar a chave de professor) fica disponível **só no próprio computador servidor** (`localhost`).
 - Alunos entram com **código da sala + nome/apelido + equipe**. O servidor emite um token de sessão (cookie) para reconexão.
 - Toda decisão é validada no servidor. **As regras de acesso ficam no código do servidor** (equipe só vê e altera o que é dela; dados públicos do mercado são de todos; professor vê tudo) e são cobertas por **testes automatizados de permissão**.
 - Acesso por `http` sem TLS é aceitável numa rede fechada de laboratório, com códigos de sala e sem dados sensíveis. Código da sala aleatório; limite de tentativas de entrada.
@@ -559,8 +587,11 @@ Detalhes:
 
 - **Local do banco:** pasta de dados ao lado do executável, se for gravável; senão, a pasta de dados do usuário (`%LOCALAPPDATA%\<produto>`), que sempre aceita gravação sem administrador.
 - **Uma partida pode ser exportada e importada como arquivo único.** O professor salva, retoma na aula seguinte, copia para um pendrive ou passa para um colega usar o mesmo cenário.
-- **Backup automático** no fim de cada mês de jogo e ao encerrar a sala. Se o computador desligar no meio da aula, a partida é retomada **pausada** do último estado salvo.
+- **Estado persistido em disco a cada tick:** o resultado de cada tick (estado do motor, históricos e ajustes) é gravado no SQLite numa única transação antes de ser enviado aos clientes; decisões, eventos e comandos do professor são gravados ao serem aceitos. Uma queda do servidor perde no máximo o tick em processamento.
+- **Retomada após reinício:** ao iniciar, o servidor reabre todas as salas não encerradas, **pausadas** no último tick gravado (seção 7.3). No modo B, as salas continuam no servidor entre uma aula e outra: o professor retoma a partida na aula seguinte com o PIN, sem exportar nada.
+- **Backup automático** do arquivo do banco no fim de cada mês de jogo, ao encerrar a sala e na inicialização do servidor (antes das migrações), com rotação das cópias mais antigas.
 - **Retenção do estado:** estado completo do motor só do tick atual e dos fins de mês. Como o motor é determinístico, semente + log de decisões + eventos reconstroem qualquer tick (replay).
+- **Retenção das salas (modo B):** salas encerradas ficam disponíveis para relatórios até o professor excluí-las; prazo máximo a definir com a política de dados (decisão 10).
 - **Histórico para gráficos:** agregados semanais por oferta e mensais por empresa.
 - **Atualização de versão:** trocar o executável. Na inicialização, o servidor faz backup do banco e aplica as migrações pendentes.
 
@@ -569,7 +600,7 @@ Detalhes:
 - **O servidor valida todas as decisões** (limites, caixa, módulos ativos, teto de preço). O frontend nunca é confiável.
 - **Mensagens do WebSocket com esquema validado** (em `/packages/shared`) e versionado; cliente e servidor recusam versões incompatíveis. Como as telas vêm do servidor da sala, cliente e servidor normalmente têm a mesma versão.
 - **Atualizações enxutas:** enviar só o que mudou (ou o resumo da equipe e do mercado), para 50+ clientes a cada tick sem sobrecarga.
-- **Impedir a suspensão** do computador host enquanto a sala está rodando, se possível sem privilégios (API do Windows via `bun:ffi`); desejável, não obrigatório.
+- **Impedir a suspensão** do computador host enquanto a sala está rodando, se possível sem privilégios (API do Windows via `bun:ffi`); desejável no modo A, não obrigatório. No modo B, a máquina servidora já fica permanentemente ligada.
 - O Claude Code desenvolve e testa tudo localmente, sem contas externas. Antes do piloto, rodar o **teste de carga** com clientes simulados.
 
 ### 9.9 Prova de conceito (PoC) de rede — primeira entrega
@@ -615,6 +646,27 @@ E, de brinde: 3) a **descoberta automática** por UDP funciona nessa rede? 4) a 
 | Executável bloqueado só nos alunos, navegador funciona | Sem impacto | Alunos entram por endereço + código |
 | HTTP funciona, mas a descoberta UDP não | Sub-redes separadas ou isolamento entre clientes | Alunos entram por endereço + código |
 | Conexões caem no teste de carga | Rede ou máquina host limitadas | Investigar antes da fase 1 |
+
+**Resultado (29/09/2026, versão 0.1.0 da PoC):**
+
+Máquinas: Windows 11 Enterprise (build 26100), no domínio `senacsp.edu.br`, usuário sem administrador, sem política de AppLocker, perfil de rede Domínio. Firewall ativo nos três perfis, com entrada bloqueada por padrão.
+
+| Teste | Resultado |
+|---|---|
+| Executável roda (pasta Downloads, sem administrador) | **Sim**, no professor e no aluno |
+| Professor em máquina do laboratório de aula → aluno na mesma sub-rede (`10.135.166.0/24`) | **Não conecta.** O aviso do firewall apareceu e exigiria administrador; sem a regra, nenhuma conexão chegou ao host (HTTP e WebSocket sem resposta em 5 s, em todas as tentativas) |
+| Host em máquina com administrador, no laboratório do centro de pesquisa (outra sub-rede) → aluno no laboratório de aula | **Conecta.** HTTP e WebSocket ok; latência média 2,2 ms (p95 4 ms); as seis portas candidatas passaram (47800, 8080, 8000, 3000, 5000, 80) |
+| Teste de carga (1 máquina de aluno, 25 conexões, 60 s) | 25/25 abertas, 0 falhas, 0 quedas; latência média 1,1 ms, máxima 3,3 ms |
+| Descoberta UDP | Não funcionou (esperado entre sub-redes; na mesma sub-rede, bloqueada pelo firewall do host) |
+| Teste só pelo navegador (`/teste`) | Não realizado |
+
+**Conclusões:**
+1. O bloqueio é o **firewall de entrada do computador do professor**, não a rede: entre as sub-redes não há filtro de porta.
+2. O modo A exigiria a regra da TI em todas as máquinas de professor. **Adotado o modo B** (seção 9.1.1), com o servidor numa máquina com administrador no centro de pesquisa.
+3. A entrada dos alunos é por **endereço + código**; a descoberta UDP não se aplica ao modo B.
+4. **Pendências antes do piloto:** repetir o teste pelo navegador (`/teste`) a partir de um computador do laboratório de aula, para confirmar que não há proxy interferindo no WebSocket; e repetir o teste de carga com 2 ou 3 máquinas simultâneas (meta: ~50 conexões).
+
+Relatórios de origem: `relatorio-professor-CAS0728899W11-1-20260929-*` e `relatorio-aluno-CAS0728844W11-1-20260929-*` (`.txt` e `.json`).
 
 **Reaproveitamento:** o código da PoC evolui para o **diagnóstico de rede** do painel do professor e para o **guia para a TI** (seção 9.5), então nada se perde.
 
@@ -685,8 +737,10 @@ E, de brinde: 3) a **descoberta automática** por UDP funciona nessa rede? 4) a 
 | Tabela | Conteúdo principal |
 |---|---|
 | `professores` | Só no modo online (fase 5): nome, e-mail, hash da senha, instituição. Na rede local não há contas |
-| `sessoes` | Tokens de sessão de alunos e professor (reconexão), com expiração |
-| `partidas` | Professor (nome informado ao criar a sala), nome, disciplina, código da sala, PIN do painel, status (preparação, rodando, pausada, encerrada), módulos ativos, preset, parâmetros (JSON versionado), semente, tick atual, segundos por tick, modo (contínuo/rodada), regras de pausa, pontuação, visibilidade do ranking |
+| `sessoes` | Tokens de sessão de alunos, professor e telão (reconexão), com papel e expiração |
+| `tentativas_acesso` | Tentativas falhas de chave, PIN e código da sala, por IP e sala (limite de tentativas) |
+| `configuracao_servidor` | Hash da chave de professor (modo B), portas, versão do esquema |
+| `partidas` | Professor (nome informado ao criar a sala), nome, disciplina, código da sala, hash do PIN do professor, token do telão, status (preparação, rodando, pausada, encerrada), módulos ativos, preset, parâmetros (JSON versionado), semente, tick atual, segundos por tick, modo (contínuo/rodada), regras de pausa, pontuação, visibilidade do ranking |
 | `mercados` | Partida, nome, população, nível de consumo, parâmetros locais |
 | `produtos` | Partida (copiado do catálogo do preset), nome, nível (matéria-prima/semiacabado/final), classe, preço de referência, necessidade, elasticidade, pesos da nota, dados do fornecedor externo, ativo no preset (sim/não) |
 | `receitas` | Produto, insumo, quantidade, peso na qualidade; peso da tecnologia do produto |
@@ -720,6 +774,8 @@ E, de brinde: 3) a **descoberta automática** por UDP funciona nessa rede? 4) a 
 | Gravações no SQLite | Algumas por segundo, de um único processo | Folgado (modo WAL) |
 | Memória do servidor | Estimativa de 100–300 MB | Qualquer PC de laboratório atual |
 
+**Requisitos do computador servidor (modo B, padrão):** Windows 10/11 64 bits, permanentemente ligado, alcançável a partir dos laboratórios de aula, com a regra de firewall de entrada da seção 9.5 e endereço estável. Não precisa de internet. Com várias turmas simultâneas, a capacidade da tabela acima se multiplica pelo número de salas; ainda folgado para um PC comum até algumas salas ao mesmo tempo (validar com o teste de carga).
+
 **Requisitos do computador host (modo A):** Windows 10/11 64 bits, na mesma rede dos alunos, com a regra de firewall da seção 9.5. Não precisa de internet.
 
 **Modo C (online):** uma máquina pequena (ex.: 1 vCPU, 1 GB de RAM) com **disco persistente** atende várias turmas simultâneas. Hospedagens "serverless" sem disco persistente não servem para o SQLite.
@@ -739,11 +795,11 @@ Cada fase termina em algo utilizável.
 
 | Fase | Entrega | Critério de aceite |
 |---|---|---|
-| **PoC — Rede no laboratório** (primeira entrega) | `poc-rede.exe` com modos Professor e Aluno, relatório e roteiro de teste (seção 9.9) | Teste feito no laboratório real e relatório gerado, respondendo às duas perguntas (o executável roda? os alunos conectam?) |
+| **PoC — Rede no laboratório** (primeira entrega) — **concluída em 29/09/2026** | `poc-rede.exe` com modos Professor e Aluno, relatório e roteiro de teste (seção 9.9) | Teste feito no laboratório real e relatório gerado, respondendo às duas perguntas (o executável roda? os alunos conectam?). Resultado: modo B adotado |
 | **Protótipo visual** (em paralelo à fase 0) | Telas navegáveis com dados fictícios e guia de estilo (seção 8.1) | Visual aprovado pelo autor antes da fase 1 |
 | **0 — Motor e balanceamento** | Pacote do motor (camada 1) com **árvore de produtos genérica**, catálogo completo em dados (anexo), robôs, CLI de balanceamento, preset `introdutorio` | Testes unitários das fórmulas (incluindo a nota do manual); determinismo (mesma semente = mesmo resultado); relatório de balanceamento cumprindo as métricas da seção 10 |
-| **1 — MVP em sala (rede local)** | Servidor Bun + SQLite + WebSocket, relógio no servidor, executável `.exe` portátil, tela inicial (criar/entrar), descoberta de sala por UDP + alternativa endereço/código, guia para a TI, diagnóstico de rede, teste de carga, criar partida, tela de decisões, relógio (velocidade, pausa, modo rodada, avançar), painel do professor com visão geral, relatórios básicos, ranking | Piloto com uma turma real em laboratório sem falhas bloqueantes |
-| **2 — Aula completa** | Relatórios completos (DRE, balanço, fluxo de caixa), modo apresentação, debate final, exportação, salvar/abrir partida como arquivo, backup automático, robôs no jogo, mercados paralelos, eventos básicos | Professor conduz o debate apenas com a ferramenta |
+| **1 — MVP em sala (rede local)** | Servidor Bun + SQLite + WebSocket, relógio no servidor, estado persistido a cada tick com retomada pausada, executável `.exe` portátil com modo servidor (modo B), várias salas simultâneas, chave de professor, PIN do professor e link do telão, entrada por endereço + código, guia de implantação do servidor, diagnóstico de rede, teste de carga, criar partida, tela de decisões, relógio (velocidade, pausa, modo rodada, avançar), painel do professor com visão geral, relatórios básicos, ranking | Piloto com uma turma real em laboratório sem falhas bloqueantes |
+| **2 — Aula completa** | Relatórios completos (DRE, balanço, fluxo de caixa), modo apresentação, debate final, exportação, salvar/abrir partida como arquivo, backup automático com rotação, modo A com tela inicial e descoberta UDP (para outras instituições), robôs no jogo, mercados paralelos, eventos básicos | Professor conduz o debate apenas com a ferramenta |
 | **3 — Finanças** | Camada 2: crédito, ações, dividendos, participações | Balanceamento reexecutado com a camada ativa |
 | **4 — Cadeia produtiva** | Camada 3: fazendas (lavoura com calendário, pecuária), mineração/petróleo/madeira com exaustão, fábricas em vários níveis, mercado atacadista entre equipes, presets `agronegocio`, `industria` e `completo`, eventos avançados (ex.: safra ruim) | Idem, com os robôs *Integrada* e *Fornecedora* |
 | **5 — Modo online** (contingência) | O mesmo servidor numa hospedagem com disco persistente: contas de professor, HTTPS, guia de implantação | Uma aula remota completa sem falhas bloqueantes |
@@ -756,28 +812,30 @@ Cada fase termina em algo utilizável.
 Confirmar com o autor antes ou durante o planejamento:
 
 1. **Stack do frontend** — React + Vite + TypeScript é a sugestão. Alguma preferência ou restrição da instituição?
-2. **Idioma do código** (identificadores, tabelas) — português ou inglês? Interface é PT-BR em qualquer caso.
-3. **Recorte do primeiro preset** — sugestão do anexo: laticínios e couro (leite engarrafado, iogurte, sorvete, sapato, carteira). Confirmar ou trocar por outro recorte da árvore do jogo. Não criar produtos novos além da lista do jogo (decisão do autor), exceto o item 12.
+2. ~~**Idioma do código**~~ — **Decidido (29/09/2026):** português para identificadores do domínio, tabelas e nomes de arquivos, como no modelo de dados (seção 12). APIs e bibliotecas externas mantêm seus nomes originais. Interface em PT-BR.
+3. ~~**Recorte do primeiro preset**~~ — **Decidido (29/09/2026):** laticínios e couro (leite engarrafado, iogurte, sorvete, sapato, carteira), conforme o anexo. Não criar produtos novos além da lista do jogo (decisão do autor), exceto o item 12.
 4. **Identificação dos alunos** — só nome/apelido com o código da sala (menos atrito) ou também matrícula (identificação para avaliação)?
 5. **Assinatura digital de código** — comprar um certificado (facilita a liberação pela TI e evita alertas do Windows) ou distribuir sem assinatura no início?
 6. **Uso para avaliação** — a pontuação vai compor nota? Se sim, reforçar auditoria, identificação dos alunos e proteção contra trapaça.
-7. **Pontuação padrão e visibilidade do ranking.**
+7. **Pontuação padrão e visibilidade do ranking.** Pontuação padrão **decidida (29/09/2026): lucro acumulado** (também é o critério de vitória no balanceamento, seção 10); o professor pode trocar por partida. Visibilidade padrão do ranking ainda em aberto.
 8. **Sistemas operacionais do executável** — só Windows ou também Linux/macOS (compilação cruzada)?
 9. **Hospedagem do modo online** (fase 5) — instituição, autor ou outra? Pode ser decidido depois.
 10. **Dados pessoais (LGPD)** — coletar o mínimo (nome/apelido), definir prazo de retenção e exclusão das partidas.
 11. **Edição de decisões durante a pausa** — permitir ou bloquear por padrão?
-12. **Queijo** — não existe no Capitalism II. Incluir como produto extra (queijo = leite + tecnologia)? É só dado no catálogo.
-13. **Valores iniciais** — usar as quantidades e pesos do Apêndice B do manual como ponto de partida da calibração (recomendado) ou definir do zero?
+12. **Queijo** — não existe no Capitalism II. Incluir como produto extra (queijo = leite + tecnologia)? É só dado no catálogo. Fora do primeiro preset (decisão 3).
+13. ~~**Valores iniciais**~~ — **Decidido (29/09/2026):** usar as quantidades e pesos do Apêndice B do manual como ponto de partida da calibração.
 14. **Jazidas** — venda a preço fixo, leilão entre equipes ou ambos?
 15. **Culturas perenes** — só o modo anual (mais simples, igual ao jogo) ou também o modo contínuo para coco e seringueira?
-16. **Portas padrão** — confirmar TCP 47800 (sala) e UDP 47801 (descoberta), ou outras definidas com a TI.
-17. **Painel do professor em outro computador** — permitir acesso com PIN (ex.: do computador do projetor) ou só no host?
+16. **Portas padrão** — TCP 47800 (sala) passou entre os laboratórios na PoC; UDP 47801 (descoberta) só se aplica ao modo A. Confirmar 47800 como padrão.
+17. ~~**Painel do professor em outro computador**~~ — **Decidido (29/09/2026):** sim. No modo B todo acesso de professor é remoto, com chave de professor para criar salas e PIN por sala; o telão usa um link próprio, somente leitura (seção 9.6).
 18. **Nome do produto e ícone** do executável.
-19. **TI só se necessário** — primeiro rodar a PoC de rede no laboratório (seção 9.9); acionar a TI com o guia (seção 9.5) apenas se o executável for bloqueado ou os alunos não conseguirem se conectar.
+19. ~~**TI só se necessário**~~ — **Decidido (29/09/2026):** a PoC mostrou que o modo A exigiria a TI em todas as máquinas de professor; adotado o modo B, que só exige a regra de firewall na máquina servidora (seções 9.1.1 e 9.9).
 20. **Identidade visual** — nome, logotipo, paleta e tipografia do produto (junto com a decisão 18).
 21. **Vista da cidade** — incluir a ilustração 2D/isométrica com os prédios das equipes ou ficar só com painéis e gráficos?
 22. **Origem da arte** — pacotes de licença livre, arte gerada, arte encomendada ou combinação.
 23. **Sons** — incluir efeitos sonoros (desligados por padrão) ou não?
+24. **Chave de professor (modo B)** — uma chave única compartilhada pelos professores da instituição (sugestão para o início) ou uma chave por professor, cadastrada pelo administrador do servidor (permite revogar um professor sem trocar a de todos)?
+25. **Endereço do servidor (modo B)** — reserva de IP no DHCP ou nome da máquina no domínio? Definir antes de imprimir o endereço nos laboratórios.
 
 ---
 
