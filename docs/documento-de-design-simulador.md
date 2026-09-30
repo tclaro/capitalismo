@@ -844,14 +844,14 @@ Confirmar com o autor antes ou durante o planejamento:
 1. ~~**Stack do frontend**~~ — **Decidido (30/09/2026):** React + Vite + TypeScript, com build estático embutido no executável e 100% offline.
 2. ~~**Idioma do código**~~ — **Decidido (29/09/2026):** português para identificadores do domínio, tabelas e nomes de arquivos, como no modelo de dados (seção 12). APIs e bibliotecas externas mantêm seus nomes originais. Interface em PT-BR.
 3. ~~**Recorte do primeiro preset**~~ — **Decidido (29/09/2026):** laticínios e couro (leite engarrafado, iogurte, sorvete, sapato, carteira), conforme o anexo. Não criar produtos novos além da lista do jogo (decisão do autor), exceto o item 12.
-4. **Identificação dos alunos** — só nome/apelido com o código da sala (menos atrito) ou também matrícula (identificação para avaliação)?
+4. ~~**Identificação dos alunos**~~ — **Decidido (30/09/2026):** só nome/apelido com o código da sala. **Equipes criadas pelos alunos:** o professor define as vagas por mercado; o primeiro aluno de uma vaga dá o nome e escolhe a cor (paleta acessível); os demais entram numa equipe existente; voltar com o mesmo nome na mesma equipe recupera o acesso; o professor renomeia equipes e move alunos. Ao iniciar, vagas vazias viram robôs (estratégia escolhida na criação) ou ficam inativas.
 5. **Assinatura digital de código** — comprar um certificado (facilita a liberação pela TI e evita alertas do Windows) ou distribuir sem assinatura no início?
 6. **Uso para avaliação** — a pontuação vai compor nota? Se sim, reforçar auditoria, identificação dos alunos e proteção contra trapaça.
-7. **Pontuação padrão e visibilidade do ranking.** Pontuação padrão **decidida (29/09/2026): lucro acumulado** (também é o critério de vitória no balanceamento, seção 10); o professor pode trocar por partida. Visibilidade padrão do ranking ainda em aberto.
+7. ~~**Pontuação padrão e visibilidade do ranking**~~ — Pontuação padrão **decidida (29/09/2026): lucro acumulado** (também é o critério de vitória no balanceamento, seção 10); o professor pode trocar por partida. Visibilidade **decidida (30/09/2026): completa** por padrão; o professor pode mudar para "só a própria posição" ou "oculto" (o telão só mostra o ranking quando é completo).
 8. **Sistemas operacionais do executável** — só Windows ou também Linux/macOS (compilação cruzada)?
 9. **Hospedagem do modo online** (fase 5) — instituição, autor ou outra? Pode ser decidido depois.
 10. **Dados pessoais (LGPD)** — coletar o mínimo (nome/apelido), definir prazo de retenção e exclusão das partidas.
-11. **Edição de decisões durante a pausa** — permitir ou bloquear por padrão?
+11. ~~**Edição de decisões durante a pausa**~~ — **Decidido (30/09/2026):** na pausa manual do professor, **bloqueada** por padrão (o professor pode liberar por partida); na pausa automática de fim de mês do modo rodada, **sempre liberada** (é o momento de decidir). Ao atingir a duração planejada, a partida pausa e o professor encerra (congela os resultados) ou estende.
 12. **Queijo** — não existe no Capitalism II. Incluir como produto extra (queijo = leite + tecnologia)? É só dado no catálogo. Fora do primeiro preset (decisão 3).
 13. ~~**Valores iniciais**~~ — **Decidido (29/09/2026):** usar as quantidades e pesos do Apêndice B do manual como ponto de partida da calibração.
 14. **Jazidas** — venda a preço fixo, leilão entre equipes ou ambos?
@@ -864,7 +864,7 @@ Confirmar com o autor antes ou durante o planejamento:
 21. **Vista da cidade** — incluir a ilustração 2D/isométrica com os prédios das equipes ou ficar só com painéis e gráficos?
 22. **Origem da arte** — pacotes de licença livre, arte gerada, arte encomendada ou combinação.
 23. **Sons** — incluir efeitos sonoros (desligados por padrão) ou não?
-24. **Chave de professor (modo B)** — uma chave única compartilhada pelos professores da instituição (sugestão para o início) ou uma chave por professor, cadastrada pelo administrador do servidor (permite revogar um professor sem trocar a de todos)?
+24. ~~**Chave de professor (modo B)**~~ — **Decidido (30/09/2026):** uma chave única compartilhada pelos professores da instituição; cada sala continua com seu PIN.
 25. **Endereço do servidor (modo B)** — reserva de IP no DHCP ou nome da máquina no domínio? Definir antes de imprimir o endereço nos laboratórios.
 26. **Fronteira tecnológica e recalibração da P&D** (aberta em 30/09/2026; seção 6.6 e `docs/calibracao-introdutorio.md`, seção 6) — implementar o teto tecnológico com retorno decrescente e recalibrar exigindo, ao mesmo tempo, equilíbrio no confronto e P&D com ótimo interior. **Adiada para depois dos testes com alunos**: até lá, o preset jogável é o `introdutorio/padrao` v0.2.0, em que P&D compensa, mas o robô premium bem ajustado vence ~77% das partidas entre robôs.
 

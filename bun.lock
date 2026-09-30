@@ -10,6 +10,15 @@
         "typescript": "^7.0.2",
       },
     },
+    "apps/servidor": {
+      "name": "@simulador/servidor",
+      "version": "0.1.0",
+      "dependencies": {
+        "@simulador/catalogo": "workspace:*",
+        "@simulador/compartilhado": "workspace:*",
+        "@simulador/motor": "workspace:*",
+      },
+    },
     "ferramentas/balanceamento": {
       "name": "@simulador/balanceamento",
       "version": "0.0.0",
@@ -25,6 +34,14 @@
         "@simulador/motor": "workspace:*",
       },
     },
+    "pacotes/compartilhado": {
+      "name": "@simulador/compartilhado",
+      "version": "0.1.0",
+      "dependencies": {
+        "@simulador/motor": "workspace:*",
+        "valibot": "^1.5.0",
+      },
+    },
     "pacotes/motor": {
       "name": "@simulador/motor",
       "version": "0.1.0",
@@ -38,7 +55,11 @@
 
     "@simulador/catalogo": ["@simulador/catalogo@workspace:pacotes/catalogo"],
 
+    "@simulador/compartilhado": ["@simulador/compartilhado@workspace:pacotes/compartilhado"],
+
     "@simulador/motor": ["@simulador/motor@workspace:pacotes/motor"],
+
+    "@simulador/servidor": ["@simulador/servidor@workspace:apps/servidor"],
 
     "@types/bun": ["@types/bun@1.4.2", "", { "dependencies": { "bun-types": "1.4.2" } }, "sha512-GimotNn7+ZV0uVArItBbriZsR1oNf0+WTzPkdcFrzShI7k2norL0uzEaJT8T33dWr7O/c9ZDuAFQrctKCi72oQ=="],
 
@@ -93,5 +114,7 @@
     "typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
 
     "undici-types": ["undici-types@8.9.0", "", {}, "sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg=="],
+
+    "valibot": ["valibot@1.5.0", "", { "peerDependencies": { "typescript": ">=5" }, "optionalPeers": ["typescript"] }, "sha512-nil6AkP2TChWL43Z5uJ6GTxX01CUA+g8LWUM+N/rB9NBbkUMaUsi9PUNzlUPgoKASgmx9f7eGOYpJ04/fSa6FQ=="],
   }
 }

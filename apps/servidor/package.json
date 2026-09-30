@@ -1,0 +1,12 @@
+{
+  "name": "@simulador/servidor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Servidor da sala (modo B): HTTP, WebSocket, relógio, persistência SQLite e autenticação (seção 9).",
+  "dependencies": {
+    "@simulador/catalogo": "workspace:*",
+    "@simulador/compartilhado": "workspace:*",
+    "@simulador/motor": "workspace:*"
+  }
+}

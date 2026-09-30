@@ -6,11 +6,12 @@
   "description": "Simulador de Mercado para ensino de Administração (ver docs/documento-de-design-simulador.md)",
   "workspaces": [
     "pacotes/*",
-    "ferramentas/*"
+    "ferramentas/*",
+    "apps/*"
   ],
   "scripts": {
-    "test": "bun test pacotes ferramentas",
-    "typecheck": "tsc --noEmit -p pacotes/motor && tsc --noEmit -p pacotes/motor/testes && tsc --noEmit -p pacotes/catalogo && tsc --noEmit -p pacotes/catalogo/testes && tsc --noEmit -p ferramentas/balanceamento",
+    "test": "bun test pacotes ferramentas apps",
+    "typecheck": "tsc --noEmit -p pacotes/motor && tsc --noEmit -p pacotes/motor/testes && tsc --noEmit -p pacotes/catalogo && tsc --noEmit -p pacotes/catalogo/testes && tsc --noEmit -p pacotes/compartilhado && tsc --noEmit -p pacotes/compartilhado/testes && tsc --noEmit -p ferramentas/balanceamento && tsc --noEmit -p apps/servidor",
     "verificar": "bun run typecheck && bun run test",
     "balancear": "bun ferramentas/balanceamento/src/cli.ts"
   },
