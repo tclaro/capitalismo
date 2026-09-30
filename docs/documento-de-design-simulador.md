@@ -826,7 +826,7 @@ Cada fase termina em algo utilizável.
 | Fase | Entrega | Critério de aceite |
 |---|---|---|
 | **PoC — Rede no laboratório** (primeira entrega) — **concluída em 29/09/2026** | `poc-rede.exe` com modos Professor e Aluno, relatório e roteiro de teste (seção 9.9) | Teste feito no laboratório real e relatório gerado, respondendo às duas perguntas (o executável roda? os alunos conectam?). Resultado: modo B adotado |
-| **Protótipo visual** (em paralelo à fase 0) | Telas navegáveis com dados fictícios e guia de estilo (seção 8.1) | Visual aprovado pelo autor antes da fase 1 |
+| **Protótipo visual** (em paralelo à fase 0) — **dispensado (30/09/2026)**: o autor preferiu ir direto à fase 1; o visual é validado nas telas reais, com tokens para mudar a identidade depois | Telas navegáveis com dados fictícios e guia de estilo (seção 8.1) | — |
 | **0 — Motor e balanceamento** — **entregue em 30/09/2026, com pendência (decisão 26)** | Pacote do motor (camada 1) com **árvore de produtos genérica**, catálogo completo em dados (anexo), robôs, CLI de balanceamento, preset `introdutorio` | Testes unitários das fórmulas (incluindo a nota do manual); determinismo (mesma semente = mesmo resultado); relatório de balanceamento cumprindo as métricas da seção 10. Situação: motor, robôs, CLI e testes completos; o balanceamento fica em aberto até a fronteira tecnológica (seção 6.6) e os testes com alunos |
 | **1 — MVP em sala (rede local)** | Servidor Bun + SQLite + WebSocket, relógio no servidor, estado persistido a cada tick com retomada pausada, executável `.exe` portátil com modo servidor (modo B), várias salas simultâneas, chave de professor, PIN do professor e link do telão, entrada por endereço + código, guia de implantação do servidor, diagnóstico de rede, teste de carga, criar partida, tela de decisões, relógio (velocidade, pausa, modo rodada, avançar), painel do professor com visão geral, relatórios básicos, ranking | Piloto com uma turma real em laboratório sem falhas bloqueantes |
 | **2 — Aula completa** | Relatórios completos (DRE, balanço, fluxo de caixa), modo apresentação, debate final, exportação, salvar/abrir partida como arquivo, backup automático com rotação, modo A com tela inicial e descoberta UDP (para outras instituições), robôs no jogo, mercados paralelos, eventos básicos | Professor conduz o debate apenas com a ferramenta |
@@ -841,7 +841,7 @@ Cada fase termina em algo utilizável.
 
 Confirmar com o autor antes ou durante o planejamento:
 
-1. **Stack do frontend** — React + Vite + TypeScript é a sugestão. Alguma preferência ou restrição da instituição?
+1. ~~**Stack do frontend**~~ — **Decidido (30/09/2026):** React + Vite + TypeScript, com build estático embutido no executável e 100% offline.
 2. ~~**Idioma do código**~~ — **Decidido (29/09/2026):** português para identificadores do domínio, tabelas e nomes de arquivos, como no modelo de dados (seção 12). APIs e bibliotecas externas mantêm seus nomes originais. Interface em PT-BR.
 3. ~~**Recorte do primeiro preset**~~ — **Decidido (29/09/2026):** laticínios e couro (leite engarrafado, iogurte, sorvete, sapato, carteira), conforme o anexo. Não criar produtos novos além da lista do jogo (decisão do autor), exceto o item 12.
 4. **Identificação dos alunos** — só nome/apelido com o código da sala (menos atrito) ou também matrícula (identificação para avaliação)?
@@ -858,7 +858,7 @@ Confirmar com o autor antes ou durante o planejamento:
 15. **Culturas perenes** — só o modo anual (mais simples, igual ao jogo) ou também o modo contínuo para coco e seringueira?
 16. **Portas padrão** — TCP 47800 (sala) passou entre os laboratórios na PoC; UDP 47801 (descoberta) só se aplica ao modo A. Confirmar 47800 como padrão.
 17. ~~**Painel do professor em outro computador**~~ — **Decidido (29/09/2026):** sim. No modo B todo acesso de professor é remoto, com chave de professor para criar salas e PIN por sala; o telão usa um link próprio, somente leitura (seção 9.6).
-18. **Nome do produto e ícone** do executável.
+18. **Nome do produto e ícone** do executável. Provisório (30/09/2026): "Simulador de Mercado", com identidade visual neutra definida por tokens (seção 8.1), trocável sem reescrever telas.
 19. ~~**TI só se necessário**~~ — **Decidido (29/09/2026):** a PoC mostrou que o modo A exigiria a TI em todas as máquinas de professor; adotado o modo B, que só exige a regra de firewall na máquina servidora (seções 9.1.1 e 9.9).
 20. **Identidade visual** — nome, logotipo, paleta e tipografia do produto (junto com a decisão 18).
 21. **Vista da cidade** — incluir a ilustração 2D/isométrica com os prédios das equipes ou ficar só com painéis e gráficos?
