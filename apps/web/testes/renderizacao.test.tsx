@@ -7,7 +7,6 @@ import { prepararDom } from "./dom";
 
 const dom = prepararDom();
 
-const relogio = (tick: number, status: string) => ({ tick, ticksPorMes: 30, status, mes: 1, dia: tick, motivoPausa: null });
 
 describe("renderização", () => {
   test("entrada: formulário do código e link do professor", async () => {
@@ -31,14 +30,11 @@ describe("renderização", () => {
     expect(r.querySelector("h1")!.textContent).toBe("Entrar na sala");
   });
 
-  test("tela do aluno: conecta como aluno e mostra o relógio do snapshot", async () => {
+  test("rota do aluno: sala inexistente avisa, sem abrir WebSocket", async () => {
+    dom.rotas.set("GET /api/salas/ABCDE/sessao", { status: 404, corpo: { ok: false, motivo: "sala não encontrada" } });
     const r = await dom.montar("/s/ABCDE");
-    expect(r.querySelector("h1")!.textContent).toBe("Sua empresa");
-    expect(r.textContent).toContain("Conectando…");
-    expect(dom.ws().url).toBe("ws://servidor:47800/ws?codigo=ABCDE&papel=aluno");
-    await dom.servidorEnvia({ tipo: "snapshot", papel: "aluno", visao: { relogio: relogio(3, "rodando") } });
-    expect(r.textContent).toContain("Conectado");
-    expect(r.textContent).toContain("Ano 1, jan, dia 3 · Rodando");
+    expect(r.querySelector("[role=alert]")!.textContent).toContain("Não há sala com esse código");
+    expect(() => dom.ws()).toThrow();
   });
 
   test("telão: conecta com o token do link; fechamento definitivo mostra o motivo", async () => {

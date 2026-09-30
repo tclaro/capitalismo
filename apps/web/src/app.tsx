@@ -1,3 +1,4 @@
+import { TelaAluno } from "./aluno/TelaAluno";
 import { PainelProfessor } from "./professor/Painel";
 import { TelaInicioProfessor } from "./professor/TelaInicio";
 import { useRota } from "./roteador";
@@ -11,7 +12,7 @@ export function App() {
     case "entrada":
       return <TelaEntrada codigoInicial={rota.codigo} />;
     case "aluno":
-      return <TelaConectada key={rota.codigo} codigo={rota.codigo} papel="aluno" titulo="Sua empresa" />;
+      return <TelaAluno key={rota.codigo} codigo={rota.codigo} />;
     case "professor":
       return rota.codigo ? <PainelProfessor key={rota.codigo} codigo={rota.codigo} /> : <TelaInicioProfessor />;
     case "telao":

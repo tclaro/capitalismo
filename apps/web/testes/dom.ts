@@ -29,6 +29,50 @@ export class WebSocketFalso {
   }
 }
 
+// ---------------------------------------------------------------------------------------------
+// Janela única do happy-dom
+// ---------------------------------------------------------------------------------------------
+//
+// O React DOM é carregado uma vez por processo e guarda referências à janela em que começou. Por
+// isso a janela do happy-dom é criada uma única vez; entre arquivos de teste, só as variáveis
+// globais que ela trocou são desligadas (voltam as originais) e religadas.
+
+const FETCH_ORIGINAL = globalThis.fetch;
+const WEBSOCKET_ORIGINAL = globalThis.WebSocket;
+let janela: { ligar(): void; desligar(): void } | null = null;
+
+function ligarJanela(): void {
+  if (janela) {
+    janela.ligar();
+    return;
+  }
+  const nomes = new Set(Object.getOwnPropertyNames(globalThis));
+  const originais = new Map([...nomes].map((k) => [k, Object.getOwnPropertyDescriptor(globalThis, k)]));
+  GlobalRegistrator.register({ url: "http://servidor:47800/" });
+  const doDom = new Map<string, PropertyDescriptor>();
+  for (const k of Object.getOwnPropertyNames(globalThis)) {
+    const d = Object.getOwnPropertyDescriptor(globalThis, k)!;
+    const o = originais.get(k);
+    if (!o || o.value !== d.value || o.get !== d.get) doDom.set(k, d);
+  }
+  const definir = (k: string, d: PropertyDescriptor | undefined) => {
+    try {
+      if (d) Object.defineProperty(globalThis, k, d);
+      else delete (globalThis as Record<string, unknown>)[k];
+    } catch {
+      // Propriedade não configurável: fica como está.
+    }
+  };
+  janela = {
+    ligar: () => doDom.forEach((d, k) => definir(k, d)),
+    desligar: () => {
+      doDom.forEach((_, k) => definir(k, originais.get(k)));
+      globalThis.fetch = FETCH_ORIGINAL;
+      globalThis.WebSocket = WEBSOCKET_ORIGINAL;
+    },
+  };
+}
+
 export interface PedidoFeito {
   metodo: string;
   caminho: string;
@@ -70,7 +114,7 @@ export function prepararDom(): Dom {
   } as Dom;
 
   beforeAll(async () => {
-    GlobalRegistrator.register({ url: "http://servidor:47800/" });
+    ligarJanela();
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     // Depois do DOM: o React DOM detecta o navegador ao carregar.
     dom.React = await import("react");
@@ -78,8 +122,8 @@ export function prepararDom(): Dom {
     App = (await import("../src/app")).App;
   });
 
-  afterAll(async () => {
-    await GlobalRegistrator.unregister();
+  afterAll(() => {
+    janela?.desligar();
   });
 
   afterEach(async () => {

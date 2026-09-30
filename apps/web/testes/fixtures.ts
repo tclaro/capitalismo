@@ -2,8 +2,8 @@
  * Visões reais para os testes de tela: a mesma `Sala` e as mesmas projeções do servidor, com
  * relógio falso. Assim a tela é testada contra o formato que o servidor de fato envia.
  */
-import type { VisaoProfessor } from "@simulador/compartilhado";
-import { projetarProfessor } from "../../servidor/src/sala/projecoes";
+import type { VisaoAluno, VisaoProfessor } from "@simulador/compartilhado";
+import { projetarAluno, projetarProfessor } from "../../servidor/src/sala/projecoes";
 import { Sala } from "../../servidor/src/sala/sala";
 import { AgendadorFalso, configSala, criarEquipe } from "../../servidor/testes/ajuda";
 
@@ -27,6 +27,8 @@ export function salaDeExemplo(extra: Parameters<typeof configSala>[0] = {}) {
     membros: { ana, bia: r.membro.id, caio },
     id,
     visao: (conectados: string[] = []): VisaoProfessor => JSON.parse(JSON.stringify(projetarProfessor(sala, "/telao/ABCDE?t=token-do-telao", null, new Set(conectados)))),
+    /** Visão do aluno exatamente como o servidor envia (JSON ida e volta). */
+    visaoAluno: (membro: string): VisaoAluno => JSON.parse(JSON.stringify(projetarAluno(sala, membro))),
     /** Inicia e joga `dias` ticks. */
     jogar(dias: number) {
       if (sala.status === "preparacao") sala.comandoRelogio(id(), 0, "iniciar");
