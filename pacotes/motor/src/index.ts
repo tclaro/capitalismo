@@ -28,5 +28,6 @@ export { balanco, CLASSES_FLUXO, CONTAS_DRE, lucroAntesIR } from "./contabilidad
 export { LIMITE_QUANTIDADE_MENSAL, LIMITE_VERBA_MENSAL, validarDecisao } from "./decisoes";
 export { aplicarEvento } from "./eventos";
 export { tempoDoTick } from "./contexto";
-export { capacidadeDeVenda, ofertaAtiva } from "./vendas";
+export { capacidadeDeVenda, ofertaAtiva, temFabricaOperando } from "./vendas";
+export { capacidadeDeProducao } from "./fabricacao";
 export { clonarEstado, ETAPAS, passo, passoMutavel } from "./passo";

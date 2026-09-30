@@ -23,7 +23,6 @@ import type {
 export const CONTAS_DRE: readonly ContaDRE[] = [
   "receita",
   "cpv",
-  "mao_de_obra",
   "publicidade",
   "pd",
   "custo_fixo_fabrica",

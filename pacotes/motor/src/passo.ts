@@ -16,6 +16,7 @@ import {
   etapaObras,
   etapaPublicidade,
 } from "./etapas";
+import { etapaCustoFixoFabricas, etapaFabricacao } from "./fabricacao";
 import type { EntradasTick, EstadoPartida, ModuloId, ResultadoTick } from "./tipos";
 import { type ResultadoVendaOferta, etapaFidelidade, etapaVendas } from "./vendas";
 
@@ -40,10 +41,12 @@ export const ETAPAS: readonly Etapa[] = [
   { passo: 4, nome: "matérias-primas (lavoura, pecuária, extração)", modulo: "cadeia_produtiva", executar: nada },
   { passo: 5, nome: "atacado entre empresas", modulo: "cadeia_produtiva", executar: nada },
   { passo: 6, nome: "compras prontas", modulo: "nucleo", executar: (ctx) => etapaComprasProntas(ctx) },
+  { passo: 6, nome: "P&D e fabricação", modulo: "nucleo", executar: (ctx) => etapaFabricacao(ctx) },
   { passo: 7, nome: "publicidade e reconhecimento", modulo: "nucleo", executar: (ctx) => etapaPublicidade(ctx) },
   { passo: 9, nome: "demanda e vendas", modulo: "nucleo", executar: (ctx, _e, m) => void (m.vendas = etapaVendas(ctx)) },
   { passo: 10, nome: "fidelidade", modulo: "nucleo", executar: (ctx, _e, m) => etapaFidelidade(ctx, m.vendas) },
   { passo: 11, nome: "custos operacionais", modulo: "nucleo", executar: (ctx) => etapaCustosOperacionais(ctx) },
+  { passo: 11, nome: "custo fixo das fábricas", modulo: "nucleo", executar: (ctx) => etapaCustoFixoFabricas(ctx) },
 ];
 
 /** Cópia profunda de um valor JSON. O estado é JSON puro por contrato (ver `tipos.ts`). */

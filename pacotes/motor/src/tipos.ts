@@ -157,12 +157,15 @@ export interface EstadoFabrica extends EstadoAtivo {
   produto: string;
 }
 
+/**
+ * Contas da DRE. Insumos e mão de obra da fabricação entram no custo do estoque e chegam à DRE
+ * pelo CPV, na venda (custeio por competência); o custo fixo da fábrica é despesa do período.
+ */
 export type ContaDRE =
   | "receita"
   | "cpv"
   | "publicidade"
   | "pd"
-  | "mao_de_obra"
   | "custo_fixo_fabrica"
   | "custo_fixo_ponto_de_venda"
   | "armazenagem"
