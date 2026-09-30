@@ -209,6 +209,8 @@ export interface EstadoContabil {
   capitalSocial: Centavos;
   /** Lucro acumulado desde o início (DRE), inclusive o mês corrente. */
   lucrosAcumulados: Centavos;
+  /** Receita de vendas acumulada desde o início (critério de pontuação por participação). */
+  receitaAcumulada: Centavos;
   prejuizoFiscalAcumulado: Centavos;
   mesAtual: AcumuladoMes;
   ultimoFechamento: FechamentoMensal | null;

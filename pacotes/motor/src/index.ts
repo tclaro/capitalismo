@@ -30,4 +30,6 @@ export { aplicarEvento } from "./eventos";
 export { tempoDoTick } from "./contexto";
 export { capacidadeDeVenda, ofertaAtiva, temFabricaOperando } from "./vendas";
 export { capacidadeDeProducao } from "./fabricacao";
+export { type CalculoIR, calcularIR, quotaDeDepreciacao } from "./financeiro";
+export { calcularPontuacao, type CriterioPontuacao, type PosicaoRanking, ranking } from "./pontuacao";
 export { clonarEstado, ETAPAS, passo, passoMutavel } from "./passo";

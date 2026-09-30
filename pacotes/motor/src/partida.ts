@@ -115,6 +115,7 @@ export function criarPartida(config: ConfigPartida): EstadoPartida {
       contabil: {
         capitalSocial,
         lucrosAcumulados: 0,
+        receitaAcumulada: 0,
         prejuizoFiscalAcumulado: 0,
         mesAtual: novoAcumuladoMes(),
         ultimoFechamento: null,

@@ -75,6 +75,7 @@ export function reconhecerResultado(empresa: EstadoEmpresa, conta: ContaDRE, val
   if (valor === 0) return;
   empresa.contabil.mesAtual.dre[conta] += valor;
   empresa.contabil.lucrosAcumulados += conta === "receita" ? valor : -valor;
+  if (conta === "receita") empresa.contabil.receitaAcumulada += valor;
 }
 
 /** Lucro antes do IR de um acumulado (receita − demais contas, exceto IR). */

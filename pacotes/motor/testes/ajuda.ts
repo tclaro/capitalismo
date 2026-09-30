@@ -69,7 +69,7 @@ export function numerosInvalidos(valor: unknown, caminho = "$"): string[] {
 
 /**
  * Verifica, depois de um tick, os invariantes que valem sempre:
- * - caixa final − caixa inicial = soma dos lançamentos da empresa (exato);
+ * - caixa final − caixa inicial = soma dos lançamentos da empresa (exato); caixa nunca negativo;
  * - ativo = passivo + patrimônio líquido (exato);
  * - dinheiro em centavos inteiros; nenhum número inválido no estado;
  * - estoques não negativos; qualidade, reconhecimento e fidelidade dentro dos limites;
@@ -86,6 +86,9 @@ export function verificarInvariantes(anterior: EstadoPartida, resultado: Resulta
     for (const l of resultado.lancamentos) if (l.empresa === e.id) soma += l.valor;
     expect({ empresa: e.id, variacao: e.caixa - antes.caixa }).toEqual({ empresa: e.id, variacao: soma });
     expect(Number.isInteger(e.caixa)).toBe(true);
+    // O crédito emergencial cobre qualquer déficit: nenhum tick termina com caixa negativo.
+    expect({ empresa: e.id, tick: estado.tick, caixaNegativo: e.caixa < 0 }).toEqual({ empresa: e.id, tick: estado.tick, caixaNegativo: false });
+    expect(e.creditoEmergencial).toBeGreaterThanOrEqual(0);
 
     const b = balanco(e, estado.tick);
     expect({ empresa: e.id, tick: estado.tick, ativo: b.ativoTotal }).toEqual({

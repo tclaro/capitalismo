@@ -246,7 +246,8 @@ describe("publicidade", () => {
 
   test("um mês de verba soma exatamente o valor mensal", () => {
     const { estado } = rodar(partidaDeTeste(), 30, (t) => (t === 1 ? { decisoes: [decidir("emp_01", LEITE, { publicidadeMensal: 1_234_567 })] } : {}));
-    expect(empresa(estado, "emp_01").contabil.mesAtual.dre.publicidade).toBe(1_234_567);
+    expect(empresa(estado, "emp_01").contabil.ultimoFechamento!.dre.publicidade).toBe(1_234_567);
+    expect(empresa(estado, "emp_01").contabil.mesAtual.dre.publicidade).toBe(0);
   });
 });
 
