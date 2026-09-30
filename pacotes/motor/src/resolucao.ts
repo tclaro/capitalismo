@@ -97,6 +97,11 @@ export function resolverPreset(preset: Preset, semente: string): ParametrosResol
     produtos: preset.produtos.map((p) => resolverProduto(p, semente)),
     marca: { ...preset.marca },
     tecnologia: { ...preset.tecnologia },
+    aprendizado: {
+      limitesMeses: [...preset.aprendizado.limitesMeses],
+      capacidade: [...preset.aprendizado.capacidade],
+      maoDeObra: [...preset.aprendizado.maoDeObra],
+    },
     vendas: { ...preset.vendas },
     pontoDeVenda: { ...preset.pontoDeVenda },
     financeiro: { ...preset.financeiro },

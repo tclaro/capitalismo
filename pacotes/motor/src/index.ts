@@ -29,7 +29,7 @@ export { LIMITE_QUANTIDADE_MENSAL, LIMITE_VERBA_MENSAL, validarDecisao } from ".
 export { aplicarEvento } from "./eventos";
 export { tempoDoTick } from "./contexto";
 export { capacidadeDeVenda, ofertaAtiva, temFabricaOperando } from "./vendas";
-export { capacidadeDeProducao } from "./fabricacao";
+export { capacidadeDeProducao, multiplicadorMaoDeObra, nivelDaFabrica } from "./fabricacao";
 export { type CalculoIR, calcularIR, quotaDeDepreciacao } from "./financeiro";
 export { calcularPontuacao, type CriterioPontuacao, type PosicaoRanking, ranking } from "./pontuacao";
 export { visaoDaEmpresa, type InsumoReceitaVisao, type OfertaConcorrente, type OfertaPropria, type ProdutoVisivel, type VisaoEmpresa } from "./visao";

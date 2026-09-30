@@ -86,6 +86,7 @@ export interface ParametrosResolvidos {
     verbaReferenciaMensal: Centavos;
     difusaoTecnologicaMensal: number;
   };
+  aprendizado: { limitesMeses: number[]; capacidade: number[]; maoDeObra: number[] };
   vendas: { sensibilidadeNota: number; perdaSubstituicao: number; multiploTetoPreco: number };
   pontoDeVenda: {
     custoAbertura: Centavos;
@@ -160,6 +161,8 @@ export interface EstadoAtivo {
 
 export interface EstadoFabrica extends EstadoAtivo {
   produto: string;
+  /** Experiência acumulada, em meses de produção à capacidade nominal (curva de aprendizado). */
+  experiencia: number;
 }
 
 /**

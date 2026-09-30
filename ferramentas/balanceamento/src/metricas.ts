@@ -26,6 +26,14 @@ export const LIMITES = {
 export const MES_DE_CHECAGEM = 4;
 const LINHA_DE_BASE = ["passiva", "aleatoria"];
 
+/**
+ * Estratégias de referência na camada 1 (decidido em 29/09/2026, seção 10.4): sem atacado entre
+ * equipes, a revenda é logicamente dominada — é o "preço baixo" sem a opção de fabricar — e não
+ * precisa vencer 10%. Exige-se que decidir bem importe: lucro médio acima da passiva e pelo menos
+ * tantas vitórias quanto ela. Na camada 3 (comprar do melhor fabricante), volta ao critério comum.
+ */
+export const ESTRATEGIAS_DE_REFERENCIA = ["revenda"];
+
 export interface MetricaEstrategia {
   estrategia: string;
   partidas: number;
@@ -121,13 +129,24 @@ export function calcularMetricas(resultados: readonly ResultadoSimulacao[], opco
       passou: maior.taxaVitoria <= LIMITES.vitoriaMaxima,
     });
   }
-  for (const m of porEstrategia.filter((x) => ESTRATEGIAS_RAZOAVEIS.includes(x.estrategia))) {
+  for (const m of porEstrategia.filter((x) => ESTRATEGIAS_RAZOAVEIS.includes(x.estrategia) && !ESTRATEGIAS_DE_REFERENCIA.includes(x.estrategia))) {
     criterios.push({
       id: `vitoria_minima:${m.estrategia}`,
       descricao: `Estratégia razoável "${m.estrategia}" vence pelo menos ~10%`,
       valor: pct(m.taxaVitoria),
       limite: `≥ ${pct(LIMITES.vitoriaMinimaRazoavel)}`,
       passou: m.taxaVitoria >= LIMITES.vitoriaMinimaRazoavel,
+    });
+  }
+  const passiva = porEstrategia.find((x) => x.estrategia === "passiva");
+  for (const m of porEstrategia.filter((x) => ESTRATEGIAS_DE_REFERENCIA.includes(x.estrategia))) {
+    const reais = (x: number) => `R$ ${Math.round(x).toLocaleString("pt-BR")}`;
+    criterios.push({
+      id: `referencia:${m.estrategia}`,
+      descricao: `Estratégia de referência "${m.estrategia}" supera a passiva (lucro médio e vitórias)`,
+      valor: `${reais(m.lucroMedio)}; ${pct(m.taxaVitoria)}`,
+      limite: passiva ? `> ${reais(passiva.lucroMedio)}; ≥ ${pct(passiva.taxaVitoria)}` : "passiva ausente",
+      passou: passiva !== undefined && m.lucroMedio > passiva.lucroMedio && m.taxaVitoria >= passiva.taxaVitoria,
     });
   }
   for (const m of porEstrategia.filter((x) => LINHA_DE_BASE.includes(x.estrategia))) {

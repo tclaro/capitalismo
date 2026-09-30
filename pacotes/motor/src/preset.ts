@@ -123,6 +123,22 @@ export interface ParametrosTecnologia {
   readonly difusaoTecnologicaMensal: number;
 }
 
+/**
+ * Curva de aprendizado das fábricas (seção 6.6; manual do Capitalism II: "a produtividade e a capacidade
+ * de uma unidade de fabricação aumentam quando o nível da unidade aumenta").
+ *
+ * A experiência de cada fábrica é medida em **meses de produção à capacidade nominal**, para valer igual
+ * para produtos de volumes muito diferentes. O nível é o maior `i` com `experiencia ≥ limites[i]`.
+ */
+export interface ParametrosAprendizado {
+  /** Experiência mínima (meses equivalentes) de cada nível; começa em 0 e é crescente. */
+  readonly limitesMeses: readonly number[];
+  /** Multiplicador da capacidade nominal em cada nível (o último costuma ser 1). */
+  readonly capacidade: readonly number[];
+  /** Multiplicador do custo de mão de obra por unidade em cada nível (o último costuma ser 1). */
+  readonly maoDeObra: readonly number[];
+}
+
 /** Alocação das vendas no varejo (seção 6.11). */
 export interface ParametrosVendas {
   /** Sensibilidade do logit à nota (β). */
@@ -171,6 +187,7 @@ export interface Preset {
   readonly produtos: readonly ProdutoDoPreset[];
   readonly marca: ParametrosMarca;
   readonly tecnologia: ParametrosTecnologia;
+  readonly aprendizado: ParametrosAprendizado;
   readonly vendas: ParametrosVendas;
   readonly pontoDeVenda: ParametrosPontoDeVenda;
   readonly financeiro: ParametrosFinanceiros;
@@ -349,6 +366,21 @@ export function validarPreset(preset: Preset): string[] {
   c.naoNegativo(t.taxaTecnologiaMensal, "tecnologia.taxaTecnologiaMensal");
   c.positivo(t.verbaReferenciaMensal, "tecnologia.verbaReferenciaMensal");
   c.fracao(t.difusaoTecnologicaMensal, "tecnologia.difusaoTecnologicaMensal");
+
+  const a = preset.aprendizado;
+  const niveis = a.limitesMeses.length;
+  c.exigir(niveis >= 1, "aprendizado.limitesMeses: precisa de pelo menos um nível");
+  c.exigir(
+    a.capacidade.length === niveis && a.maoDeObra.length === niveis,
+    `aprendizado: limitesMeses, capacidade e maoDeObra devem ter o mesmo número de níveis (${niveis}, ${a.capacidade.length}, ${a.maoDeObra.length})`,
+  );
+  if (niveis >= 1) c.exigir(a.limitesMeses[0] === 0, "aprendizado.limitesMeses: o primeiro nível começa em 0");
+  a.limitesMeses.forEach((x, i) => {
+    c.naoNegativo(x, `aprendizado.limitesMeses[${i}]`);
+    if (i > 0) c.exigir(x > a.limitesMeses[i - 1]!, `aprendizado.limitesMeses: deve ser crescente (posição ${i})`);
+  });
+  a.capacidade.forEach((x, i) => c.positivo(x, `aprendizado.capacidade[${i}]`));
+  a.maoDeObra.forEach((x, i) => c.positivo(x, `aprendizado.maoDeObra[${i}]`));
 
   const v = preset.vendas;
   c.naoNegativo(v.sensibilidadeNota, "vendas.sensibilidadeNota");

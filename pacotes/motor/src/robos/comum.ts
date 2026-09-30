@@ -21,20 +21,19 @@ export function custoPronto(p: ProdutoVisivel): number {
   return p.fornecedor ? p.fornecedor.preco : Infinity;
 }
 
-/** Custo variável unitário de fabricar (insumos + mão de obra), em centavos (Infinity se não é fabricável). */
-export function custoFabricado(p: ProdutoVisivel): number {
+/**
+ * Custo variável unitário de fabricar (insumos + mão de obra), em centavos (Infinity se não é fabricável).
+ * `multiplicadorMaoDeObra` vem da curva de aprendizado (1 = fábrica experiente).
+ */
+export function custoFabricado(p: ProdutoVisivel, multiplicadorMaoDeObra = 1): number {
   if (!p.fabricacao) return Infinity;
   let insumos = 0;
   for (const i of p.fabricacao.receita) insumos += i.quantidadePorLote * i.precoFornecedor;
-  return insumos / p.fabricacao.unidadesPorLote + p.fabricacao.custoMaoDeObraPorUnidade;
+  return insumos / p.fabricacao.unidadesPorLote + p.fabricacao.custoMaoDeObraPorUnidade * multiplicadorMaoDeObra;
 }
 
-/** Custo unitário atual: fabricado se há fábrica operando, senão pronto. */
-export function custoAtual(visao: VisaoEmpresa, p: ProdutoVisivel): number {
-  const o = ofertaPropria(visao, p.id);
-  const pronto = custoPronto(p);
-  return o.fabricasOperando > 0 ? Math.min(pronto, custoFabricado(p)) : pronto;
-}
+/** Média de uma lista (a curva de aprendizado vista como "média dos níveis" pelo primeiro ano de uma fábrica nova). */
+const media = (xs: readonly number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 1);
 
 /** Média dos preços dos concorrentes que vendem o produto; `null` se nenhum vende. */
 export function precoMedioConcorrentes(visao: VisaoEmpresa, produtoId: string): number | null {
@@ -109,10 +108,12 @@ export function pontosDeVendaAAbrir(visao: VisaoEmpresa, usoMensal: number, util
  * Payback (meses) de uma fábrica para o volume mensal esperado: capex / (economia por unidade × volume −
  * custo fixo). `Infinity` se não compensa.
  */
-export function paybackDaFabrica(p: ProdutoVisivel, volumeMensal: number): number {
+export function paybackDaFabrica(p: ProdutoVisivel, volumeMensal: number, aprendizado?: VisaoEmpresa["custos"]["aprendizado"]): number {
   if (!p.fabricacao || !p.fornecedor) return Infinity;
-  const volume = Math.min(volumeMensal, p.fabricacao.capacidadeUnidadesPorDia * DIAS_POR_MES);
-  const ganho = (custoPronto(p) - custoFabricado(p)) * volume - p.fabricacao.custoFixoMensal;
+  // Fábrica nova: capacidade e mão de obra na média da curva de aprendizado.
+  const capacidade = p.fabricacao.capacidadeUnidadesPorDia * DIAS_POR_MES * (aprendizado ? media(aprendizado.capacidade) : 1);
+  const volume = Math.min(volumeMensal, capacidade);
+  const ganho = (custoPronto(p) - custoFabricado(p, aprendizado ? media(aprendizado.maoDeObra) : 1)) * volume - p.fabricacao.custoFixoMensal;
   return ganho > 0 ? p.fabricacao.capex / ganho : Infinity;
 }
 
@@ -134,7 +135,7 @@ export function deveConstruirFabrica(visao: VisaoEmpresa, p: ProdutoVisivel, vol
   const capacidadeMensal = (o.fabricasOperando * p.fabricacao.capacidadeUnidadesPorDia * DIAS_POR_MES);
   if (o.fabricasOperando > 0 && volumeMensal <= capacidadeMensal * 1.1) return false;
   const volumeAdicional = o.fabricasOperando > 0 ? volumeMensal - capacidadeMensal : volumeMensal;
-  if (paybackDaFabrica(p, volumeAdicional) > politica.paybackMaximo) return false;
+  if (paybackDaFabrica(p, volumeAdicional, visao.custos.aprendizado) > politica.paybackMaximo) return false;
   return caixaDisponivel >= p.fabricacao.capex * (1 + politica.folgaDeCaixa);
 }
 
@@ -168,10 +169,10 @@ export function custoFixoPorUnidadeEquivalente(visao: VisaoEmpresa): number {
 }
 
 /** Custo variável unitário médio de um abastecimento que mistura produção própria e compra pronta. */
-export function custoVariavelPonderado(p: ProdutoVisivel, producao: number, compra: number): number {
+export function custoVariavelPonderado(p: ProdutoVisivel, producao: number, compra: number, multiplicadorMaoDeObra = 1): number {
   const total = producao + compra;
-  if (total <= 0) return Math.min(custoPronto(p), custoFabricado(p));
-  const fabricado = producao > 0 ? custoFabricado(p) : 0;
+  if (total <= 0) return Math.min(custoPronto(p), custoFabricado(p, multiplicadorMaoDeObra));
+  const fabricado = producao > 0 ? custoFabricado(p, multiplicadorMaoDeObra) : 0;
   const pronto = compra > 0 ? custoPronto(p) : 0;
   return (producao * fabricado + compra * pronto) / total;
 }
@@ -217,7 +218,7 @@ export function decisoesDoPlano(
     const capacidadeProducaoMensal = o.capacidadeProducaoPorTick * visao.ticksPorMes;
     const producao = plano.fabricar && p.fabricacao ? Math.min(alvo, Math.floor(capacidadeProducaoMensal)) : 0;
     const compra = p.fornecedor ? Math.max(0, alvo - producao) : 0;
-    const custoUnitario = custoVariavelPonderado(p, producao, compra) + fixoPorEquivalente * p.fatorCapacidade;
+    const custoUnitario = custoVariavelPonderado(p, producao, compra, o.multiplicadorMaoDeObra) + fixoPorEquivalente * p.fatorCapacidade;
     const preco = precoValido(p, plano.preco(custoUnitario));
     const receitaEsperada = volumeMensal * preco;
     const publicidade = Math.max(0, Math.round(plano.publicidadeFracao * receitaEsperada * corteVerbas));

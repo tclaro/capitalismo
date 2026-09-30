@@ -44,7 +44,7 @@ export const PRECO_BAIXO: Estrategia = {
   id: "preco_baixo",
   nome: "Preço baixo",
   descricao: "Margem mínima sobre o custo completo e volume alto; fabrica quando a fábrica se paga rápido.",
-  faixas: { margem: [0.04, 0.12], paybackMaximo: [8, 14], publicidade: [0, 0.02] },
+  faixas: { margem: [0.15, 0.35], paybackMaximo: [8, 14], publicidade: [0, 0.02] },
   decidir: (v, i) =>
     decisoesDoPlano(
       v,
@@ -107,8 +107,8 @@ export const EQUILIBRADA: Estrategia = {
 export const REVENDA: Estrategia = {
   id: "revenda",
   nome: "Revenda",
-  descricao: "Só compra pronto, nunca fabrica; preço próximo ao do mercado.",
-  faixas: { ajuste: [-0.05, 0.05], publicidade: [0.02, 0.05] },
+  descricao: "Só compra pronto, nunca fabrica; preço um pouco abaixo do mercado.",
+  faixas: { ajuste: [-0.1, 0.02], publicidade: [0.03, 0.08] },
   decidir: (v, i) =>
     decisoesDoPlano(
       v,

@@ -111,6 +111,7 @@ export function aplicarDecisao(ctx: Contexto, d: Decisao): void {
         depreciacaoAcumulada: 0,
         operaDesdeTick: ctx.tick + prazoEmTicks(fab.prazoConstrucaoDias, ctx),
         vidaUtilMeses: fab.vidaUtilMeses,
+        experiencia: 0,
       });
       movimentarCaixa(empresa, ctx.lancamentos, -fab.capex, "investimento", "construção de fábrica", empresa.id, "construtora", d.produto);
       return;

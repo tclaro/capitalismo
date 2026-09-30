@@ -16,7 +16,7 @@ import type { Contexto } from "./contexto";
 import { arredondarCentavos, darEntrada, parcelaDoDia } from "./dinheiro";
 import { qualidadeFabricada, tecnologiaNova, tecnologiaRelativa } from "./formulas/qualidade";
 import { taxaMensalParaTick } from "./formulas/tempo";
-import type { EstadoEmpresa, EstadoOferta, ProdutoResolvido } from "./tipos";
+import { DIAS_POR_MES, type EstadoEmpresa, type EstadoFabrica, type EstadoOferta, type ParametrosResolvidos, type ProdutoResolvido } from "./tipos";
 import { temFabricaOperando } from "./vendas";
 
 interface PedidoProducao {
@@ -26,12 +26,51 @@ interface PedidoProducao {
   quantidade: number;
 }
 
-/** Capacidade de produção do produto no tick (soma das fábricas em operação). */
+/** Tolerância no limiar de nível: a experiência é uma soma de frações e 60 × (1/60) pode dar 0,9999999. */
+const TOLERANCIA_NIVEL = 1e-9;
+
+/** Nível da fábrica na curva de aprendizado: maior `i` com `experiencia ≥ limitesMeses[i]`. */
+export function nivelDaFabrica(fabrica: EstadoFabrica, aprendizado: ParametrosResolvidos["aprendizado"]): number {
+  let nivel = 0;
+  aprendizado.limitesMeses.forEach((limite, i) => {
+    if (fabrica.experiencia >= limite - TOLERANCIA_NIVEL) nivel = i;
+  });
+  return nivel;
+}
+
+/** Capacidade de uma fábrica em operação no tick, pelo nível de aprendizado. */
+function capacidadeDaFabrica(fabrica: EstadoFabrica, produto: ProdutoResolvido, ctx: Contexto): number {
+  const a = ctx.estado.parametros.aprendizado;
+  return produto.fabricacao!.capacidadeUnidadesPorDia * ctx.diasPorTick * a.capacidade[nivelDaFabrica(fabrica, a)]!;
+}
+
+function fabricasOperando(empresa: EstadoEmpresa, produto: string, tick: number): EstadoFabrica[] {
+  return empresa.fabricas.filter((f) => f.produto === produto && f.operaDesdeTick <= tick);
+}
+
+/** Capacidade de produção do produto no tick (soma das fábricas em operação, cada uma pelo seu nível). */
 export function capacidadeDeProducao(empresa: EstadoEmpresa, produto: ProdutoResolvido, ctx: Contexto): number {
   if (!produto.fabricacao) return 0;
-  let fabricas = 0;
-  for (const f of empresa.fabricas) if (f.produto === produto.id && f.operaDesdeTick <= ctx.tick) fabricas++;
-  return fabricas * produto.fabricacao.capacidadeUnidadesPorDia * ctx.diasPorTick;
+  let capacidade = 0;
+  for (const f of fabricasOperando(empresa, produto.id, ctx.tick)) capacidade += capacidadeDaFabrica(f, produto, ctx);
+  return capacidade;
+}
+
+/**
+ * Multiplicador médio do custo de mão de obra das fábricas em operação, ponderado pela capacidade
+ * (o que um lote produzido hoje pagaria). Sem fábrica operando, o do primeiro nível.
+ */
+export function multiplicadorMaoDeObra(empresa: EstadoEmpresa, produto: ProdutoResolvido, ctx: Contexto): number {
+  const a = ctx.estado.parametros.aprendizado;
+  const fabricas = produto.fabricacao ? fabricasOperando(empresa, produto.id, ctx.tick) : [];
+  let soma = 0;
+  let pesos = 0;
+  for (const f of fabricas) {
+    const cap = capacidadeDaFabrica(f, produto, ctx);
+    soma += cap * a.maoDeObra[nivelDaFabrica(f, a)]!;
+    pesos += cap;
+  }
+  return pesos > 0 ? soma / pesos : a.maoDeObra[0]!;
 }
 
 /** Passo 6 (parte): P&D, tecnologia e fabricação. */
@@ -114,7 +153,19 @@ export function etapaFabricacao(ctx: Contexto): void {
         custoInsumos += custo;
         insumosDoLote.push({ peso: i.pesoQualidade, qualidade: fornecedor.qualidade });
       }
-      const maoDeObra = arredondarCentavos(quantidade * fab.custoMaoDeObraPorUnidade);
+      // Divide o lote entre as fábricas na proporção da capacidade: cada uma paga a mão de obra do seu
+      // nível e ganha experiência (meses equivalentes de produção à capacidade nominal).
+      const fabricas = fabricasOperando(x.empresa, x.produto.id, ctx.tick);
+      const capacidades = fabricas.map((f) => capacidadeDaFabrica(f, x.produto, ctx));
+      let capacidadeTotal = 0;
+      for (const c of capacidades) capacidadeTotal += c;
+      let maoDeObra = 0;
+      fabricas.forEach((f, k) => {
+        const parte = (quantidade * capacidades[k]!) / capacidadeTotal;
+        const multiplicador = p.aprendizado.maoDeObra[nivelDaFabrica(f, p.aprendizado)]!;
+        maoDeObra += arredondarCentavos(parte * fab.custoMaoDeObraPorUnidade * multiplicador);
+        f.experiencia += parte / (fab.capacidadeUnidadesPorDia * DIAS_POR_MES);
+      });
       movimentarCaixa(x.empresa, ctx.lancamentos, -maoDeObra, "operacional", "mão de obra da produção", x.empresa.id, "trabalhadores", x.produto.id);
 
       const relativa = tecnologiaRelativa(x.oferta.tecnologia, tecnologiaMaxima.get(x.produto.id)!, p.tecnologia.tecnologiaBase);

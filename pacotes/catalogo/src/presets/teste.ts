@@ -100,6 +100,8 @@ export const PRESET_TESTE: Preset = {
     pesoFidelidade: 0.5,
   },
   tecnologia: { tecnologiaInicial: 10, tecnologiaBase: 20, taxaTecnologiaMensal: 5, verbaReferenciaMensal: reais(20_000), difusaoTecnologicaMensal: 0 },
+  // Um nível só, neutro: a fábrica opera na capacidade e no custo nominais (goldens inalterados).
+  aprendizado: { limitesMeses: [0], capacidade: [1], maoDeObra: [1] },
   vendas: { sensibilidadeNota: 0.1, perdaSubstituicao: 0.5, multiploTetoPreco: 2 },
   pontoDeVenda: {
     custoAbertura: reais(80_000),

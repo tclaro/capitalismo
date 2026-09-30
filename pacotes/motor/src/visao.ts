@@ -6,7 +6,7 @@
  * contém o preço de referência interno (P_ref, seção 6.4), a elasticidade, nem caixa, estoque, custos
  * ou verbas dos concorrentes. Os robôs recebem só esta visão, com a mesma informação das equipes.
  */
-import { capacidadeDeProducao } from "./fabricacao";
+import { capacidadeDeProducao, multiplicadorMaoDeObra } from "./fabricacao";
 import { marca as calcularMarca } from "./formulas/marca";
 import { tetoDePreco } from "./formulas/nota";
 import { criarContexto } from "./contexto";
@@ -63,6 +63,8 @@ export interface OfertaPropria {
   fabricasOperando: number;
   fabricasEmObra: number;
   capacidadeProducaoPorTick: number;
+  /** Multiplicador atual do custo de mão de obra (curva de aprendizado das fábricas em operação). */
+  multiplicadorMaoDeObra: number;
 }
 
 export interface OfertaConcorrente {
@@ -101,6 +103,8 @@ export interface VisaoEmpresa {
     pontoDeVenda: { custoAbertura: Centavos; prazoAberturaDias: number; custoFixoMensal: Centavos; capacidadePorDia: number };
     aliquotaIR: number;
     jurosEmergencialMensal: number;
+    /** Curva de aprendizado das fábricas (pública: é regra do jogo). */
+    aprendizado: { limitesMeses: number[]; capacidade: number[]; maoDeObra: number[] };
   };
 }
 
@@ -193,6 +197,7 @@ export function visaoDaEmpresa(estado: EstadoPartida, empresaId: string): VisaoE
           fabricasOperando: operando,
           fabricasEmObra: empresa.fabricas.filter((f) => f.produto === o.produto).length - operando,
           capacidadeProducaoPorTick: capacidadeDeProducao(empresa, produto, ctx),
+          multiplicadorMaoDeObra: multiplicadorMaoDeObra(empresa, produto, ctx),
         };
       }),
     },
@@ -219,6 +224,11 @@ export function visaoDaEmpresa(estado: EstadoPartida, empresaId: string): VisaoE
       },
       aliquotaIR: p.financeiro.aliquotaIR,
       jurosEmergencialMensal: p.financeiro.jurosEmergencialMensal,
+      aprendizado: {
+        limitesMeses: [...p.aprendizado.limitesMeses],
+        capacidade: [...p.aprendizado.capacidade],
+        maoDeObra: [...p.aprendizado.maoDeObra],
+      },
     },
   };
 }

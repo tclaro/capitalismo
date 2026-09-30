@@ -10,7 +10,7 @@
 import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import { KG_POR_LB, LITROS_POR_QUART } from "@simulador/catalogo";
-import { type Decisao, type EstadoPartida, passoMutavel } from "../src";
+import { type Decisao, type EstadoPartida, nivelDaFabrica, passoMutavel, validarPreset, visaoDaEmpresa } from "../src";
 import { decidir, empresa, oferta, PRESET_TESTE, partidaDeTeste, rodar } from "./ajuda";
 
 const LEITE = "leite_engarrafado";
@@ -135,6 +135,90 @@ describe("P&D e tecnologia", () => {
     // Lotes produzidos no tick 91 (um dia de produção = 100 un). Qualidade dos insumos: 0,65×50 + 0,05×60 = 35,5.
     expect(oferta(estado, "emp_01", LEITE).estoque.qualidade).toBeCloseTo(35.5 + 30 * 1, 9);
     expect(oferta(estado, "emp_02", LEITE).estoque.qualidade).toBeCloseTo(35.5 + 30 * (tb / ta), 9);
+  });
+});
+
+describe("curva de aprendizado da fábrica", () => {
+  // 3 níveis: experiência (meses à capacidade nominal) 0 / 1 / 3; capacidade 50% / 80% / 100%;
+  // mão de obra 150% / 120% / 100%. Leite engarrafado: 1.500 un/dia nominais, mão de obra R$ 1,40.
+  const presetAprendizado = { ...PRESET_TESTE, aprendizado: { limitesMeses: [0, 1, 3], capacidade: [0.5, 0.8, 1], maoDeObra: [1.5, 1.2, 1] } };
+  const correr = (ticks: number, producaoMensal = 30_000) =>
+    rodar(partidaDeTeste(["Alfa"], { preset: presetAprendizado }), ticks, (t) => (t === 1 ? { decisoes: [construir("emp_01"), decidir("emp_01", LEITE, { producaoMensal })] } : {}));
+
+  test("fábrica nova (nível 0): metade da capacidade e mão de obra 1,5×", () => {
+    const { estado, resultados } = correr(31);
+    expect(oferta(estado, "emp_01", LEITE).estoque.quantidade).toBeCloseTo(750, 9);
+    expect(resultados[30]!.lancamentos.find((l) => l.descricao === "mão de obra da produção")!.valor).toBe(-(750 * 140 * 1.5));
+    expect(empresa(estado, "emp_01").fabricas[0]!.experiencia).toBeCloseTo(750 / (1500 * 30), 12);
+  });
+
+  test("sobe de nível após 1 mês equivalente (45.000 un = 60 dias a 750/dia): capacidade 1.200, mão de obra 1,2×", () => {
+    const { estado, resultados } = correr(91);
+    const tick91 = resultados[90]!;
+    expect(empresa(estado, "emp_01").fabricas[0]!.experiencia).toBeCloseTo(1 + 1000 / 45_000, 9);
+    expect(tick91.lancamentos.find((l) => l.descricao === "mão de obra da produção")!.valor).toBe(-(1000 * 140 * 1.2));
+    // No tick 90 ainda era nível 0 (750 un a 1,5×).
+    expect(resultados[89]!.lancamentos.find((l) => l.descricao === "mão de obra da produção")!.valor).toBe(-(750 * 140 * 1.5));
+  });
+
+  test("nível pelo limiar, com tolerância ao ruído de ponto flutuante na soma da experiência", () => {
+    const fabrica = (experiencia: number) => ({ id: "f", produto: LEITE, custo: 0, depreciacaoAcumulada: 0, operaDesdeTick: 0, vidaUtilMeses: 1, experiencia });
+    const a = presetAprendizado.aprendizado;
+    expect([0, 0.5, 0.9999999999999998, 1, 2.9, 3, 50].map((x) => nivelDaFabrica(fabrica(x), a))).toEqual([0, 0, 1, 1, 1, 2, 2]);
+  });
+
+  test("a experiência cresce com o volume produzido, não com o tempo: fábrica parada não aprende", () => {
+    const { estado } = correr(90, 0);
+    expect(empresa(estado, "emp_01").fabricas[0]!.experiencia).toBe(0);
+  });
+
+  test("duas fábricas em níveis diferentes: produção dividida pela capacidade, mão de obra pelo nível de cada uma", () => {
+    // Fábrica 1 desde o tick 1 (opera no 31); fábrica 2 construída no tick 61 (opera no 91).
+    const { estado, resultados } = rodar(partidaDeTeste(["Alfa"], { preset: presetAprendizado }), 91, (t) => {
+      if (t === 1) return { decisoes: [construir("emp_01"), decidir("emp_01", LEITE, { producaoMensal: 90_000 })] };
+      if (t === 61) return { decisoes: [construir("emp_01")] };
+      return {};
+    });
+    // Tick 91: fábrica 1 no nível 1 (1.200/dia), fábrica 2 no nível 0 (750/dia); pedido 3.000/dia > 1.950.
+    const [f1, f2] = empresa(estado, "emp_01").fabricas;
+    expect(resultados[90]!.lancamentos.find((l) => l.descricao === "mão de obra da produção")!.valor).toBe(-(1200 * 140 * 1.2 + 750 * 140 * 1.5));
+    expect(f2!.experiencia).toBeCloseTo(750 / 45_000, 12);
+    expect(f1!.experiencia).toBeGreaterThan(1);
+  });
+
+  test("a visão mostra o multiplicador atual de mão de obra e a curva do jogo", () => {
+    const { estado } = correr(31);
+    const v = visaoDaEmpresa(estado, "emp_01");
+    expect(v.empresa.ofertas.find((o) => o.produto === LEITE)!.multiplicadorMaoDeObra).toBe(1.5);
+    expect(v.custos.aprendizado).toEqual(presetAprendizado.aprendizado);
+  });
+
+  test("preset inválido: níveis de tamanhos diferentes, limite inicial ≠ 0, limites não crescentes", () => {
+    const erros = (aprendizado: object) => validarPreset({ ...PRESET_TESTE, aprendizado } as typeof PRESET_TESTE);
+    expect(erros({ limitesMeses: [0, 1], capacidade: [1], maoDeObra: [1, 1] }).join()).toContain("mesmo número de níveis");
+    expect(erros({ limitesMeses: [1], capacidade: [1], maoDeObra: [1] }).join()).toContain("começa em 0");
+    expect(erros({ limitesMeses: [0, 2, 2], capacidade: [1, 1, 1], maoDeObra: [1, 1, 1] }).join()).toContain("crescente");
+    expect(erros({ limitesMeses: [0], capacidade: [0], maoDeObra: [1] }).join()).toContain("capacidade[0]");
+  });
+
+  test("invariantes com a curva de aprendizado e decisões aleatórias (propriedade)", () => {
+    const decisao = fc.oneof(
+      fc.record({
+        tipo: fc.constant("produto" as const),
+        empresa: fc.constantFrom("emp_01", "emp_02"),
+        produto: fc.constantFrom(LEITE, CARTEIRA),
+        preco: fc.option(fc.integer({ min: 1, max: 1200 }), { nil: null }),
+        producaoMensal: fc.double({ min: 0, max: 80_000, noNaN: true }),
+      }),
+      fc.record({ tipo: fc.constant("construirFabrica" as const), empresa: fc.constantFrom("emp_01", "emp_02"), produto: fc.constantFrom(LEITE, CARTEIRA) }),
+    );
+    fc.assert(
+      fc.property(fc.array(fc.array(decisao, { maxLength: 3 }), { minLength: 90, maxLength: 90 }), (porTick) => {
+        rodar(partidaDeTeste(["A", "B"], { preset: presetAprendizado }), 90, (t) => ({ decisoes: porTick[t - 1] as Decisao[] }));
+        return true;
+      }),
+      { numRuns: 10 },
+    );
   });
 });
 

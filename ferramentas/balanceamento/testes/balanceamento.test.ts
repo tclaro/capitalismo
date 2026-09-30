@@ -47,7 +47,8 @@ function simulacao(i: number, vencedor: string, extra: Partial<Record<string, Pa
     intensidade: {},
     posicao: ordem.indexOf(estrategia) + 1,
     pontuacao: 100 - ordem.indexOf(estrategia),
-    lucroAcumulado: (100 - ordem.indexOf(estrategia)) * 100,
+    // A revenda lucra mais que a passiva por padrão (critério de referência); os testes sobrescrevem quando precisam.
+    lucroAcumulado: estrategia === "revenda" ? 1_000_000 : (100 - ordem.indexOf(estrategia)) * 100,
     receitaAcumulada: 1000,
     participacaoReceita: 1 / 7,
     creditoFinal: 0,
@@ -78,6 +79,17 @@ describe("métricas de aceite (seção 10.4)", () => {
     const m = calcularMetricas(vencedores.map((v, i) => simulacao(i, v)));
     expect(m.criterios.filter((c) => !c.passou)).toEqual([]);
     expect(m.aprovado).toBe(true);
+  });
+
+  test("revenda (referência na camada 1): não precisa vencer 10%, mas precisa superar a passiva", () => {
+    const vencedores = ["premium", "premium", "equilibrada", "equilibrada", "marca", "marca", "preco_baixo", "preco_baixo", "premium", "equilibrada"];
+    // Revenda nunca vence, mas lucra mais que a passiva → aprovado.
+    const acima = calcularMetricas(vencedores.map((v, i) => simulacao(i, v, { revenda: { lucroAcumulado: 100_000 }, passiva: { lucroAcumulado: 50_000 } })));
+    expect(acima.criterios.map((c) => c.id)).not.toContain("vitoria_minima:revenda");
+    expect(acima.criterios.find((c) => c.id === "referencia:revenda")!.passou).toBe(true);
+    // Revenda lucra menos que a passiva → reprovado.
+    const abaixo = calcularMetricas(vencedores.map((v, i) => simulacao(i, v, { revenda: { lucroAcumulado: 10_000 }, passiva: { lucroAcumulado: 50_000 } })));
+    expect(abaixo.criterios.find((c) => c.id === "referencia:revenda")!.passou).toBe(false);
   });
 
   test("linha de base que vence reprova", () => {
@@ -158,7 +170,11 @@ describe("relatórios", () => {
 
 describe("melhor resposta", () => {
   test("grade padrão: faixa, meio e meia faixa além das pontas (sem negativos para parâmetros positivos)", () => {
-    expect(gradePadrao("preco_baixo").margem).toEqual([0, 0.04, 0.08, 0.12, 0.16].map((x) => expect.closeTo(x, 12)));
+    // margem na faixa [0,15; 0,35]: meia faixa = 0,10
+    expect(gradePadrao("preco_baixo").margem).toEqual([0.05, 0.15, 0.25, 0.35, 0.45].map((x) => expect.closeTo(x, 12)));
+    expect(gradePadrao("premium").pd).toEqual([0.045, 0.08, 0.115, 0.15, 0.185].map((x) => expect.closeTo(x, 12)));
+    // publicidade na faixa [0; 0,02]: o ponto abaixo da faixa seria −0,01 e é cortado em 0
+    expect(gradePadrao("preco_baixo").publicidade).toEqual([0, 0, 0.01, 0.02, 0.03].map((x) => expect.closeTo(x, 12)));
     expect(gradePadrao("equilibrada").ajuste).toEqual([-0.07, -0.03, 0.01, 0.05, 0.09].map((x) => expect.closeTo(x, 12)));
   });
 

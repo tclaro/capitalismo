@@ -177,6 +177,8 @@ export const PRESET_INTRODUTORIO: Preset = {
     verbaReferenciaMensal: reais(20_000),
     difusaoTecnologicaMensal: 0,
   },
+  // Provisório (neutro) até a calibração com a curva de aprendizado.
+  aprendizado: { limitesMeses: [0], capacidade: [1], maoDeObra: [1] },
   vendas: { sensibilidadeNota: 0.1, perdaSubstituicao: 0.5, multiploTetoPreco: 2 },
   pontoDeVenda: {
     custoAbertura: reais(80_000),
