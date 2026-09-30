@@ -36,6 +36,9 @@ export function infoDe(sala: Sala): InfoSala {
     presetId: sala.preset.id,
     presetNome: sala.preset.nome,
     mercados: sala.estado.mercados.map((m) => ({ id: m.id, nome: m.nome })),
+    produtos: sala.estado.parametros.produtos.filter((p) => p.varejo !== null).map((p) => ({ id: p.id, nome: p.nome, unidade: p.unidade })),
+    criterio: sala.config.criterio,
+    duracaoMeses: sala.config.duracaoMeses,
     rankingVisivel: sala.config.rankingVisivel,
     edicaoNaPausa: sala.config.edicaoNaPausa,
     avancoQuandoProntas: sala.config.avancoQuandoProntas,
@@ -122,6 +125,7 @@ export function projetarProfessor(sala: Sala, linkTelao: string, pin: string | n
     relogio: relogioDe(sala),
     pin,
     linkTelao,
+    robosNasVagasVazias: sala.config.robosNasVagasVazias,
     vagas: vagasPublicas(sala),
     empresas: sala.estado.empresas.map((e) => {
       const vaga = sala.vaga(e.id)!;

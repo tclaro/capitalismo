@@ -141,3 +141,17 @@ export function validar<S extends v.GenericSchema>(esquema: S, entrada: unknown)
   const caminho = problema.path?.map((p) => String(p.key)).join(".") ?? "";
   return { ok: false, erro: caminho ? `campo "${caminho}" inválido` : "mensagem inválida" };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Teste de conexão (página /teste, diagnóstico do professor)
+// ---------------------------------------------------------------------------------------------
+
+const milissegundos = v.pipe(v.number(), v.finite(), v.minValue(0), v.maxValue(600_000));
+
+/** Resultado que a página /teste envia ao servidor. */
+export const RelatorioTeste = v.strictObject({
+  maquina: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(60)),
+  http: v.strictObject({ ok: v.boolean(), amostras: inteiro(0, 100), mediaMs: v.nullable(milissegundos), maxMs: v.nullable(milissegundos) }),
+  ws: v.strictObject({ ok: v.boolean(), ms: v.nullable(milissegundos), erro: v.optional(v.pipe(v.string(), v.maxLength(200))) }),
+});
+export type RelatorioTeste = v.InferOutput<typeof RelatorioTeste>;

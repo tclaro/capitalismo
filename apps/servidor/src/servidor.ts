@@ -19,6 +19,7 @@ import {
   CodigoSala,
   ConfigSala,
   CriarSala,
+  type Diagnostico,
   EntrarAluno,
   EntrarProfessor,
   type InfoPublicaSala,
@@ -30,11 +31,14 @@ import {
   type MensagemServidor,
   PALETA_EQUIPES,
   type Papel,
+  type RegistroDeTeste,
+  RelatorioTeste,
   type SalaCriada,
   type SessaoNaSala,
   VERSAO_PROTOCOLO,
   validar,
 } from "@simulador/compartilhado";
+import { PRESETS } from "@simulador/catalogo";
 import { ESTRATEGIAS_RAZOAVEIS } from "@simulador/motor";
 import { DURACAO_SESSAO_MS, type PapelComSessao, type RegraDeLimite } from "./dados/acessos";
 import type { Gerente } from "./gerente";
@@ -47,12 +51,14 @@ export const PORTA_PADRAO = 47800;
 
 const MINUTO = 60_000;
 /** Regras do limite de tentativas (por IP e, para o PIN, também por sala). */
-export const REGRAS: Record<"chave" | "pinIp" | "pinSala" | "codigo" | "entrada", RegraDeLimite> = {
+export const REGRAS: Record<"chave" | "pinIp" | "pinSala" | "codigo" | "entrada" | "teste", RegraDeLimite> = {
   chave: { maxFalhas: 5, janelaMs: 10 * MINUTO, bloqueioMs: MINUTO, bloqueioMaxMs: 30 * MINUTO },
   pinIp: { maxFalhas: 5, janelaMs: 10 * MINUTO, bloqueioMs: MINUTO, bloqueioMaxMs: 30 * MINUTO },
   pinSala: { maxFalhas: 20, janelaMs: 10 * MINUTO, bloqueioMs: 5 * MINUTO, bloqueioMaxMs: 30 * MINUTO },
   codigo: { maxFalhas: 20, janelaMs: 10 * MINUTO, bloqueioMs: MINUTO, bloqueioMaxMs: 10 * MINUTO },
   entrada: { maxFalhas: 30, janelaMs: 10 * MINUTO, bloqueioMs: MINUTO, bloqueioMaxMs: 10 * MINUTO },
+  // Não são falhas: cada relatório de teste de conexão conta (uma sala inteira testando cabe folgado).
+  teste: { maxFalhas: 20, janelaMs: 10 * MINUTO, bloqueioMs: MINUTO, bloqueioMaxMs: 10 * MINUTO },
 };
 
 /** Mensagens por conexão: balde de 30, recarga de 10 por segundo. */
@@ -61,14 +67,27 @@ const BALDE_RECARGA_POR_S = 10;
 /** Mensagens recusadas por excesso antes de fechar a conexão. */
 const EXCESSOS_ATE_FECHAR = 20;
 
+/** Relatórios da página /teste guardados em memória para o diagnóstico (os mais recentes). */
+const TESTES_GUARDADOS = 200;
+/** O WebSocket de teste fecha sozinho depois disso. */
+const DURACAO_WS_TESTE_MS = 20_000;
+
+/** Presets oferecidos na criação da sala (os de teste só por API). */
+const PRESETS_JOGAVEIS = Object.values(PRESETS)
+  .filter((p) => !p.id.startsWith("teste/"))
+  .map((p) => ({ id: p.id, nome: p.nome }));
+
 export interface DadosConexao {
+  /** Vazio no WebSocket da página /teste. */
   salaId: string;
-  papel: Papel;
+  papel: Papel | "teste";
   membro: string | null;
   empresa: string | null;
   fichas: number;
   ultimaRecarga: number;
   excessos: number;
+  /** Timer que fecha o WebSocket de teste. */
+  fim: ReturnType<typeof setTimeout> | null;
 }
 
 export interface OpcoesServidor {
@@ -109,6 +128,7 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
   const { acessos, limites } = gerente;
   const origensExtras = opcoes.dev ? ORIGENS_DEV : [];
   const conexoes = new Map<string, Set<ServerWebSocket<DadosConexao>>>();
+  const testes: RegistroDeTeste[] = [];
   let server!: Server<DadosConexao>;
 
   const linkTelao = (sala: Sala) => `/telao/${sala.codigo}?t=${acessos.tokenTelao(sala.id) ?? ""}`;
@@ -127,7 +147,7 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
     return ids;
   };
 
-  function visaoDe(sala: Sala, d: DadosConexao) {
+  function visaoDe(sala: Sala, d: DadosConexao & { papel: Papel }) {
     switch (d.papel) {
       case "aluno":
         return projetarEquipe(sala, d.empresa!);
@@ -141,7 +161,9 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
   const enviar = (ws: ServerWebSocket<DadosConexao>, m: MensagemServidor) => ws.send(JSON.stringify(m));
 
   function enviarSnapshot(ws: ServerWebSocket<DadosConexao>, sala: Sala): void {
-    enviar(ws, { tipo: "snapshot", papel: ws.data.papel, visao: visaoDe(sala, ws.data) });
+    const d = ws.data;
+    if (d.papel === "teste") return;
+    enviar(ws, { tipo: "snapshot", papel: d.papel, visao: visaoDe(sala, { ...d, papel: d.papel }) });
   }
 
   function publicar(sala: Sala): void {
@@ -243,7 +265,29 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
     if (caminho === "/ws" && metodo === "GET") return upgrade(req, url);
 
     if (caminho === "/api/servidor" && metodo === "GET") {
-      return json({ versao: opcoes.versao ?? "dev", protocolo: VERSAO_PROTOCOLO, porta: server.port ?? 0, enderecos: enderecos(), chaveDefinida: acessos.chaveDefinida(), estrategiasDeRobo: ESTRATEGIAS_RAZOAVEIS } satisfies InfoServidor);
+      return json({
+        versao: opcoes.versao ?? "dev",
+        protocolo: VERSAO_PROTOCOLO,
+        porta: server.port ?? 0,
+        enderecos: enderecos(),
+        chaveDefinida: acessos.chaveDefinida(),
+        estrategiasDeRobo: ESTRATEGIAS_RAZOAVEIS,
+        presets: PRESETS_JOGAVEIS,
+      } satisfies InfoServidor);
+    }
+
+    // Teste de conexão (página /teste): ping HTTP e registro do resultado para o diagnóstico.
+    if (caminho === "/api/teste/ping" && metodo === "GET") return json({ ok: true });
+    if (caminho === "/api/teste" && metodo === "POST") {
+      // Conta o pedido antes de conferir: o limite vale para o próprio pedido que o estoura.
+      limites.registrarFalha(`teste:ip:${ip}`, REGRAS.teste);
+      const b = bloqueado([`teste:ip:${ip}`]);
+      if (b) return b;
+      const corpo = validar(RelatorioTeste, await lerJson(req, 2_000));
+      if (!corpo.ok) return erro(400, corpo.erro);
+      testes.unshift({ quando: new Date().toISOString(), ip, navegador: (req.headers.get("user-agent") ?? "?").slice(0, 200), ...corpo.valor });
+      testes.length = Math.min(testes.length, TESTES_GUARDADOS);
+      return json({ ok: true, ip });
     }
 
     // Criar sala (professor, com a chave compartilhada).
@@ -370,6 +414,12 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
 
     // Ações do professor por HTTP (as que devolvem segredo, que não vai pelo pub/sub).
     // O telão confere o próprio link (no navegador, o 401 do upgrade aparece só como queda).
+    // Diagnóstico de rede do painel do professor: endereços e testes de conexão recebidos.
+    if (resto === "/diagnostico" && metodo === "GET") {
+      if (!sessaoDe(req, sala, "professor")) return erro(401, "só o professor da sala");
+      return json({ ok: true, versao: opcoes.versao ?? "dev", porta: server.port ?? 0, enderecos: enderecos(), testes } satisfies Diagnostico);
+    }
+
     if (resto === "/telao" && metodo === "GET") {
       const valido = acessos.conferirTelao(sala.id, url.searchParams.get("t") ?? "");
       return valido ? json({ ok: true }) : erro(401, "link do telão inválido ou revogado");
@@ -426,6 +476,11 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
 
   function upgrade(req: Request, url: URL): Response | undefined {
     if (!origemPermitida(req, origensExtras)) return erro(403, "origem não permitida");
+    // WebSocket da página /teste: sem sala nem sessão; só responde a pings e fecha sozinho.
+    if (url.searchParams.get("papel") === "teste") {
+      const ok = server.upgrade(req, { data: { salaId: "", papel: "teste", membro: null, empresa: null, fichas: BALDE_CAPACIDADE, ultimaRecarga: performance.now(), excessos: 0, fim: null } });
+      return ok ? undefined : erro(400, "upgrade falhou");
+    }
     const codigo = validar(CodigoSala, url.searchParams.get("codigo") ?? "");
     const sala = codigo.ok ? gerente.salaPorCodigo(codigo.valor) : undefined;
     if (!sala) return erro(404, "sala não encontrada");
@@ -444,7 +499,7 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
     } else {
       return erro(400, "papel inválido");
     }
-    const ok = server.upgrade(req, { data: { ...dados, salaId: sala.id, fichas: BALDE_CAPACIDADE, ultimaRecarga: performance.now(), excessos: 0 } });
+    const ok = server.upgrade(req, { data: { ...dados, salaId: sala.id, fichas: BALDE_CAPACIDADE, ultimaRecarga: performance.now(), excessos: 0, fim: null } });
     return ok ? undefined : erro(400, "upgrade falhou");
   }
 
@@ -520,6 +575,10 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
       backpressureLimit: 1024 * 1024,
       closeOnBackpressureLimit: true,
       open(ws) {
+        if (ws.data.papel === "teste") {
+          ws.data.fim = setTimeout(() => ws.close(1000, "fim do teste"), DURACAO_WS_TESTE_MS);
+          return;
+        }
         const sala = gerente.sala(ws.data.salaId);
         if (!sala) {
           ws.close(4004, "sala excluída");
@@ -535,14 +594,19 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
         if (d.papel === "aluno") agendarEnvio(sala.id);
       },
       message(ws, bruto) {
-        const sala = gerente.sala(ws.data.salaId);
-        if (!sala) {
-          ws.close(4004, "sala excluída");
-          return;
-        }
         if (!consumirFicha(ws.data)) {
           if (++ws.data.excessos > EXCESSOS_ATE_FECHAR) ws.close(1008, "muitas mensagens");
           else enviar(ws, { tipo: "erro", motivo: "muitas mensagens; aguarde" });
+          return;
+        }
+        if (ws.data.papel === "teste") {
+          // Eco do teste de conexão: qualquer mensagem vira pong.
+          enviar(ws, { tipo: "pong" });
+          return;
+        }
+        const sala = gerente.sala(ws.data.salaId);
+        if (!sala) {
+          ws.close(4004, "sala excluída");
           return;
         }
         let entrada: unknown;
@@ -565,6 +629,8 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
         }
       },
       close(ws) {
+        if (ws.data.fim) clearTimeout(ws.data.fim);
+        if (ws.data.papel === "teste") return;
         const lista = conexoes.get(ws.data.salaId);
         lista?.delete(ws);
         if (ws.data.papel === "aluno" && gerente.sala(ws.data.salaId)) agendarEnvio(ws.data.salaId);

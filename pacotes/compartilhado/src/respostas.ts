@@ -21,6 +21,8 @@ export interface InfoServidor {
   enderecos: string[];
   chaveDefinida: boolean;
   estrategiasDeRobo: readonly string[];
+  /** Presets jogáveis (os de teste ficam de fora). */
+  presets: { id: string; nome: string }[];
 }
 
 export interface SalaCriada {
@@ -68,4 +70,23 @@ export interface ListaDoAdmin {
   ok: true;
   chaveDefinida: boolean;
   salas: SalaNoAdmin[];
+}
+
+/** Um teste de conexão recebido (página /teste), como o professor vê no diagnóstico. */
+export interface RegistroDeTeste {
+  quando: string;
+  ip: string;
+  navegador: string;
+  maquina: string;
+  http: { ok: boolean; amostras: number; mediaMs: number | null; maxMs: number | null };
+  ws: { ok: boolean; ms: number | null; erro?: string | undefined };
+}
+
+export interface Diagnostico {
+  ok: true;
+  versao: string;
+  porta: number;
+  enderecos: string[];
+  /** Mais recentes primeiro. */
+  testes: RegistroDeTeste[];
 }

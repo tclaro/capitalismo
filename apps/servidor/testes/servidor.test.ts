@@ -342,9 +342,12 @@ describe("vazamento (lista permitida)", () => {
     expect(textoAna).not.toMatch(/"pin"/);
 
     const textoTelao = telao.brutas.join("\n");
-    for (const proibido of ["Ana", "Bia", "Caio", "caixa", "lucro", "estoque", "decisao", "credito", "fechamento", "12345", s.tokenTelao, '"pin"']) {
-      expect(textoTelao).not.toContain(proibido);
-    }
+    // Texto: nomes de alunos, a compra privada do Caio e segredos nunca aparecem.
+    for (const proibido of ["Ana", "Bia", "Caio", "12345", s.tokenTelao]) expect(textoTelao).not.toContain(proibido);
+    // Campos: nenhum campo privado de empresa (o valor público "criterio": "lucro_acumulado" pode;
+    // "membros" nas vagas é só a contagem, e os nomes já foram conferidos acima).
+    const chavesTelao = new Set(telao.mensagens.flatMap((m) => chavesDe(m)));
+    expect([...chavesTelao].filter((k) => /caixa|lucro|estoque|decisao|credito|fechamento|pin|custo|receita/i.test(k))).toEqual([]);
     // O professor vê tudo, mas nem ele recebe o PIN pelo WebSocket (só na criação ou ao gerar outro).
     const ultimaProf = prof.mensagens.filter(ehVisao).at(-1) as Atualizacao<VisaoProfessor>;
     expect(ultimaProf.visao.pin).toBeNull();
@@ -410,6 +413,50 @@ describe("limites", () => {
   });
 });
 
+describe("teste de conexão e diagnóstico", () => {
+  const relatorio = (maquina: string) => ({ maquina, http: { ok: true, amostras: 5, mediaMs: 2.5, maxMs: 4 }, ws: { ok: true, ms: 3 } });
+
+  test("ping HTTP e WebSocket de teste respondem sem sessão", async () => {
+    const nav = amb.navegador();
+    expect((await nav.pedir("/api/teste/ping")).corpo).toEqual({ ok: true });
+    const ws = await nav.ws({ papel: "teste" });
+    ws.enviar({ tipo: "ping" });
+    expect(await ws.esperar((m) => m.tipo === "pong")).toEqual({ tipo: "pong" });
+    ws.enviar({ qualquer: "coisa" });
+    await ws.esperar((m) => m.tipo === "pong");
+    // Não recebe nada de sala nenhuma.
+    expect(ws.mensagens.every((m) => m.tipo === "pong")).toBe(true);
+  });
+
+  test("relatórios chegam ao diagnóstico do professor, mais recentes primeiro; só ele vê", async () => {
+    const s = await salaComEquipes(amb);
+    const aluno = amb.navegador();
+    expect((await aluno.post("/api/teste", relatorio("LAB2-PC07"))).corpo).toEqual({ ok: true, ip: "127.0.0.1" });
+    expect((await aluno.post("/api/teste", relatorio("LAB2-PC08"))).status).toBe(200);
+    expect((await aluno.post("/api/teste", { ...relatorio("x"), extra: 1 })).status).toBe(400);
+    expect((await aluno.post("/api/teste", relatorio("   "))).status).toBe(400);
+    expect((await amb.navegador().pedir(`/api/salas/${s.codigo}/diagnostico`)).status).toBe(401);
+    expect((await s.ana.nav.pedir(`/api/salas/${s.codigo}/diagnostico`)).status).toBe(401);
+    const d = await s.prof.pedir(`/api/salas/${s.codigo}/diagnostico`);
+    expect(d.status).toBe(200);
+    expect(d.corpo.testes.map((t: { maquina: string }) => t.maquina)).toEqual(["LAB2-PC08", "LAB2-PC07"]);
+    expect(d.corpo.testes[0]).toMatchObject({ ip: "127.0.0.1", http: { ok: true, amostras: 5 }, ws: { ok: true, ms: 3 } });
+    expect(typeof d.corpo.testes[0].navegador).toBe("string");
+    expect(d.corpo.porta).toBe(amb.servidor.porta);
+  });
+
+  test("relatórios em excesso do mesmo IP são recusados", async () => {
+    const nav = amb.navegador();
+    for (let i = 0; i < 20; i++) expect((await nav.post("/api/teste", relatorio(`PC${i}`))).status).toBe(200);
+    expect((await nav.post("/api/teste", relatorio("PC20"))).status).toBe(429);
+  });
+
+  test("presets oferecidos: só os jogáveis", async () => {
+    const r = await amb.navegador().pedir("/api/servidor");
+    expect(r.corpo.presets).toEqual([{ id: "introdutorio/padrao", nome: expect.any(String) }]);
+  });
+});
+
 describe("executável de linha de comando", () => {
   const pasta = mkdtempSync(join(tmpdir(), "simulador-cli-"));
   afterAll(() => rmSync(pasta, { recursive: true, force: true }));
@@ -446,3 +493,10 @@ describe("executável de linha de comando", () => {
     }
   }, 30_000);
 });
+
+/** Todos os nomes de campo presentes num valor JSON. */
+function chavesDe(valor: unknown): string[] {
+  if (Array.isArray(valor)) return valor.flatMap(chavesDe);
+  if (valor && typeof valor === "object") return Object.entries(valor).flatMap(([k, v]) => [k, ...chavesDe(v)]);
+  return [];
+}

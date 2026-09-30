@@ -1,5 +1,9 @@
+import { PainelProfessor } from "./professor/Painel";
+import { TelaInicioProfessor } from "./professor/TelaInicio";
 import { useRota } from "./roteador";
-import { TelaConectada, TelaEmConstrucao, TelaEntrada, TelaNaoEncontrada } from "./telas/esqueletos";
+import { TelaAdmin } from "./telas/Admin";
+import { TelaConectada, TelaEntrada, TelaNaoEncontrada } from "./telas/esqueletos";
+import { TelaTeste } from "./telas/Teste";
 
 export function App() {
   const rota = useRota();
@@ -9,11 +13,13 @@ export function App() {
     case "aluno":
       return <TelaConectada key={rota.codigo} codigo={rota.codigo} papel="aluno" titulo="Sua empresa" />;
     case "professor":
-      return rota.codigo ? <TelaConectada key={rota.codigo} codigo={rota.codigo} papel="professor" titulo="Painel do professor" /> : <TelaEmConstrucao titulo="Criar ou abrir uma sala" />;
+      return rota.codigo ? <PainelProfessor key={rota.codigo} codigo={rota.codigo} /> : <TelaInicioProfessor />;
     case "telao":
       return <TelaConectada key={rota.codigo} codigo={rota.codigo} papel="telao" token={rota.token} titulo="Telão" />;
     case "admin":
-      return <TelaEmConstrucao titulo="Administração do servidor" />;
+      return <TelaAdmin />;
+    case "teste":
+      return <TelaTeste />;
     case "nao-encontrada":
       return <TelaNaoEncontrada />;
   }

@@ -9,6 +9,7 @@
  * - `/professor/<código>`   painel do professor
  * - `/telao/<código>?t=`    telão (somente leitura)
  * - `/admin`                administração (só no computador servidor)
+ * - `/teste`                teste de conexão de um computador do laboratório
  */
 import { useSyncExternalStore } from "react";
 
@@ -18,6 +19,7 @@ export type Rota =
   | { tela: "professor"; codigo: string | null }
   | { tela: "telao"; codigo: string; token: string | null }
   | { tela: "admin" }
+  | { tela: "teste" }
   | { tela: "nao-encontrada" };
 
 const CODIGO = /^[A-Za-z0-9]{5}$/;
@@ -30,6 +32,7 @@ export function rotaDe(caminho: string, busca = ""): Rota {
   if (resto.length > 0) return { tela: "nao-encontrada" };
   if (a === undefined) return { tela: "entrada", codigo: codigoOuNull(params.get("codigo")) };
   if (a === "admin" && b === undefined) return { tela: "admin" };
+  if (a === "teste" && b === undefined) return { tela: "teste" };
   if (a === "professor") {
     if (b === undefined) return { tela: "professor", codigo: null };
     const codigo = codigoOuNull(b);
@@ -53,6 +56,8 @@ export function caminhoDe(rota: Rota): string {
       return rota.token ? `/telao/${rota.codigo}?t=${encodeURIComponent(rota.token)}` : `/telao/${rota.codigo}`;
     case "admin":
       return "/admin";
+    case "teste":
+      return "/teste";
     case "nao-encontrada":
       return "/";
   }

@@ -7,7 +7,9 @@
  * O servidor é a fonte confiável dessas mensagens, então aqui ficam só os tipos (sem esquemas).
  */
 import type { Aviso, Centavos, FechamentoMensal, PosicaoRanking, VisaoEmpresa } from "@simulador/motor";
-import type { DecisaoDoAluno, MODOS_RELOGIO, VISIBILIDADES_RANKING } from "./protocolo";
+/** Tipos do motor que aparecem nas visões, reexportados para as telas não dependerem do motor. */
+export type { Aviso, Centavos, FechamentoMensal, PosicaoRanking, VisaoEmpresa } from "@simulador/motor";
+import type { CRITERIOS_PONTUACAO, DecisaoDoAluno, MODOS_RELOGIO, VISIBILIDADES_RANKING } from "./protocolo";
 
 export type StatusSala = "preparacao" | "rodando" | "pausada" | "encerrada";
 export type MotivoPausa = "manual" | "fim_do_mes" | "duracao_atingida" | "erro";
@@ -34,6 +36,10 @@ export interface InfoSala {
   presetId: string;
   presetNome: string;
   mercados: { id: string; nome: string }[];
+  /** Produtos vendidos no varejo (nomes e unidades para as telas). */
+  produtos: { id: string; nome: string; unidade: string }[];
+  criterio: (typeof CRITERIOS_PONTUACAO)[number];
+  duracaoMeses: number;
   rankingVisivel: (typeof VISIBILIDADES_RANKING)[number];
   edicaoNaPausa: boolean;
   avancoQuandoProntas: boolean;
@@ -107,6 +113,8 @@ export interface VisaoProfessor {
   relogio: EstadoRelogio;
   pin: string | null;
   linkTelao: string;
+  /** Estratégia dos robôs que ocupam as vagas vazias ao iniciar; `null` = ficam inativas. */
+  robosNasVagasVazias: string | null;
   vagas: VagaPublica[];
   empresas: EmpresaNoPainel[];
   ranking: { mercado: string; posicoes: PosicaoRanking[] }[];

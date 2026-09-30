@@ -84,18 +84,6 @@ export function TelaConectada({ codigo, papel, token = null, titulo }: { codigo:
   );
 }
 
-export function TelaEmConstrucao({ titulo }: { titulo: string }) {
-  return (
-    <>
-      <Cabecalho />
-      <main className="conteudo pilha">
-        <h1>{titulo}</h1>
-        <p className="texto-2">Tela em construção.</p>
-      </main>
-    </>
-  );
-}
-
 export function TelaNaoEncontrada() {
   return (
     <>
