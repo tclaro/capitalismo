@@ -28,7 +28,17 @@ bun run balancear melhor-resposta --estrategia <id> --sementes 24 --meses 24 --t
 | [preco_baixo](melhor-resposta-preco_baixo.md) | margem 35%, publicidade 3% | 75,0% | margem 15–35% |
 | [revenda](melhor-resposta-revenda.md) | preço 10% abaixo, publicidade 10,5% | 25,0% | ajuste −10% a +2% |
 
-Em todas, o ótimo é **preço no mercado ou um pouco abaixo, com mais publicidade do que os robôs padrão**. Duas explicações possíveis: os robôs padrão jogam longe do ótimo (a aprovação acima vale para estratégias como os robôs as jogam hoje) e/ou a publicidade está barata demais no preset. Para distinguir, é preciso trazer as faixas dos robôs para perto dos ótimos e recalibrar. **Decisão pendente com o autor.**
+Em todas, o ótimo é **preço no mercado ou um pouco abaixo, com mais publicidade do que os robôs padrão**.
+
+## Situação atual (30/09/2026)
+
+**Todos os relatórios desta pasta foram medidos com os robôs antigos.** Depois deles:
+- os robôs foram ajustados para perto desses ótimos;
+- com os robôs ajustados, a v0.2.0 deixa de estar equilibrada: o premium vence ~77%;
+- a recalibração (candidato v0.3.0) equilibrou o confronto, mas deixou a P&D sem retorno em qualquer dose;
+- nenhuma combinação concilia equilíbrio e P&D que compensa no modelo atual.
+
+Decisão do autor: manter a **v0.2.0** como preset jogável para os testes com alunos e retomar depois, com a fronteira tecnológica (decisão 26 do design). Detalhes e números: [`docs/calibracao-introdutorio.md`](../../calibracao-introdutorio.md), seção 6.
 
 Os CSVs (uma linha por empresa por partida) ficam em `ferramentas/balanceamento/saida/`, fora do repositório; a mesma linha de comando os regenera de forma idêntica.
 

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { ESTRATEGIAS_DO_CONFRONTO, type ResultadoSimulacao, type ResumoEmpresaSimulada } from "@simulador/motor";
+import { ESTRATEGIAS, ESTRATEGIAS_DO_CONFRONTO, type ResultadoSimulacao, type ResumoEmpresaSimulada } from "@simulador/motor";
 import { lerArgumentos } from "../src/cli";
 import { robosDoConfronto, sementeDaPartida } from "../src/confronto";
 import { executarLote } from "../src/execucao";
-import { combinacoes, gradePadrao } from "../src/melhorResposta";
+import { bordasDe, buscarMelhorResposta, combinacoes, gradePadrao, MAX_EXTENSOES, proximoValor } from "../src/melhorResposta";
 import { calcularMetricas, LIMITES, porcentagem } from "../src/metricas";
 import { executarEmParalelo, PoolDeTrabalhadores } from "../src/paralelo";
 import { relatorioCsv, relatorioMarkdown } from "../src/relatorio";
@@ -115,6 +115,21 @@ describe("métricas de aceite (seção 10.4)", () => {
     expect(m.criterios.find((c) => c.id === "credito_prolongado")!.passou).toBe(false);
   });
 
+  test("confronto extremo: só o critério da decisão trivial entra na aprovação (seção 10.4)", () => {
+    // Passiva vence 2 de 10 (reprovaria como linha de base), mas o preço mínimo não vence: aprovado.
+    const vencedores = ["passiva", "passiva", "premium", "equilibrada", "marca", "revenda", "preco_baixo", "premium", "equilibrada", "marca"];
+    const resultados = vencedores.map((v, i) => {
+      const r = simulacao(i, v);
+      r.empresas.push({ ...r.empresas[0]!, id: "emp_08", nome: "preco_minimo", estrategia: "preco_minimo", posicao: 8 });
+      return r;
+    });
+    const m = calcularMetricas(resultados, { estrategiaExtrema: "preco_minimo" });
+    expect(m.criterios.find((c) => c.id === "linha_de_base:passiva")).toMatchObject({ passou: false, diagnostico: true });
+    expect(m.criterios.find((c) => c.id === "melhor_resposta_extrema")).toMatchObject({ passou: true });
+    expect(m.criterios.find((c) => c.id === "melhor_resposta_extrema")!.diagnostico).toBeUndefined();
+    expect(m.aprovado).toBe(true);
+  });
+
   test("estratégia extrema: critério próprio e fora do critério de vitória máxima", () => {
     const vencedores = ["preco_minimo", "preco_minimo", "premium", "equilibrada", "marca", "revenda", "preco_baixo", "premium", "equilibrada", "marca"];
     const resultados = vencedores.map((v, i) => {
@@ -175,14 +190,62 @@ describe("relatórios", () => {
 });
 
 describe("melhor resposta", () => {
-  test("grade padrão: faixa, meio e meia faixa além das pontas (sem negativos para parâmetros positivos)", () => {
-    // margem na faixa [0,15; 0,35]: meia faixa = 0,10
-    expect(gradePadrao("preco_baixo").margem).toEqual([0.05, 0.15, 0.25, 0.35, 0.45].map((x) => expect.closeTo(x, 12)));
-    expect(gradePadrao("premium").pd).toEqual([0.045, 0.08, 0.115, 0.15, 0.185].map((x) => expect.closeTo(x, 12)));
-    // publicidade na faixa [0; 0,02]: o ponto abaixo da faixa seria −0,01 e é cortado em 0
-    expect(gradePadrao("preco_baixo").publicidade).toEqual([0, 0, 0.01, 0.02, 0.03].map((x) => expect.closeTo(x, 12)));
-    expect(gradePadrao("equilibrada").ajuste).toEqual([-0.07, -0.03, 0.01, 0.05, 0.09].map((x) => expect.closeTo(x, 12)));
+  test("grade padrão: faixa, meio e meia faixa além das pontas (sem negativos para parâmetros não negativos)", () => {
+    // Vale para qualquer faixa (as faixas dos robôs mudam na calibração).
+    for (const id of ["preco_baixo", "premium", "marca", "equilibrada", "revenda"]) {
+      for (const [nome, [min, max]] of Object.entries(ESTRATEGIAS[id]!.faixas)) {
+        const g = gradePadrao(id)[nome]!;
+        const meia = (max - min) / 2;
+        expect({ id, nome, g }).toEqual({
+          id,
+          nome,
+          g: [min >= 0 ? Math.max(0, min - meia) : min - meia, min, (min + max) / 2, max, max + meia].map((x) => expect.closeTo(x, 12)),
+        });
+      }
+    }
   });
+
+  test("grade padrão corta em zero o ponto abaixo de uma faixa que começa em zero", () => {
+    // aleatória: probabilidadeInvestir na faixa [0,02; 0,08] → abaixo: 0,02 − 0,03 = −0,01 → 0
+    expect(gradePadrao("aleatoria").probabilidadeInvestir![0]).toBe(0);
+  });
+
+  test("bordas: parâmetros na ponta da grade, com a direção de extensão", () => {
+    const grade = { a: [1, 2, 3], b: [10, 20], c: [5] };
+    expect(bordasDe({ a: 3, b: 10, c: 5 }, grade)).toEqual([
+      { nome: "a", direcao: 1 },
+      { nome: "b", direcao: -1 },
+    ]);
+    expect(bordasDe({ a: 2, b: 15, c: 5 }, grade)).toEqual([]);
+  });
+
+  test("próximo valor além da ponta: mesmo passo; não cruza zero em parâmetro não negativo", () => {
+    expect(proximoValor([0.06, 0.085, 0.11, 0.135], 1)).toBeCloseTo(0.16, 12);
+    expect(proximoValor([0.02, 0.05, 0.08], -1)).toBe(0);
+    expect(proximoValor([0, 0.05], -1)).toBeNull();
+    expect(proximoValor([-0.08, -0.04, 0], -1)).toBeCloseTo(-0.12, 12);
+    expect(proximoValor([3, 3], 1)).toBeNull();
+  });
+
+  test("busca estende a grade quando o ótimo está na borda e para quando não melhora", async () => {
+    const r = await buscarMelhorResposta({
+      presetId: "teste/congelado",
+      estrategia: "revenda",
+      grade: { ajuste: [-0.1, -0.05], publicidade: [0.05, 0.1] },
+      partidas: 2,
+      meses: 1,
+      prefixo: "ext",
+      trabalhadores: 1,
+    });
+    expect(r.pontos.length).toBeGreaterThanOrEqual(4);
+    expect(r.extensoes).toBeLessThanOrEqual(MAX_EXTENSOES);
+    // Cada ponto novo é uma extensão de um parâmetro de borda, e a grade final contém esses valores.
+    for (const p of r.pontos) for (const [nome, v] of Object.entries(p.intensidade)) expect(r.grade[nome]).toContain(v);
+    // A grade 2×2 tem 4 pontos; cada extensão acrescenta pontos e valores.
+    expect(r.pontos.length > 4).toBe(r.extensoes > 0);
+    // O melhor ponto final não está na borda, ou a busca esgotou as extensões (ou não pôde estender).
+    if (r.melhor.naBorda) expect(r.extensoes === MAX_EXTENSOES || bordasDe(r.melhor.intensidade, r.grade).every((b) => proximoValor(r.grade[b.nome]!, b.direcao) === null)).toBe(true);
+  }, 60_000);
 
   test("produto cartesiano determinístico", () => {
     expect(combinacoes({ b: [1, 2], a: [10] })).toEqual([

@@ -32,7 +32,13 @@ export function relatorioMarkdown(info: InfoExecucao, metricas: Metricas): strin
       "",
     );
   } else {
-    linhas.push(`**Resultado: ${metricas.aprovado ? "APROVADO" : "REPROVADO"}** (${metricas.criterios.filter((c) => c.passou).length} de ${metricas.criterios.length} critérios)`, "");
+    const deAprovacao = metricas.criterios.filter((c) => !c.diagnostico);
+    const diagnosticos = metricas.criterios.length - deAprovacao.length;
+    linhas.push(
+      `**Resultado: ${metricas.aprovado ? "APROVADO" : "REPROVADO"}** (${deAprovacao.filter((c) => c.passou).length} de ${deAprovacao.length} critérios de aprovação` +
+        `${diagnosticos > 0 ? `; ${diagnosticos} de diagnóstico` : ""})`,
+      "",
+    );
   }
   linhas.push("| Execução | |", "|---|---|");
   linhas.push(`| Preset | \`${info.presetId}\` v${info.presetVersao} |`);
@@ -45,7 +51,8 @@ export function relatorioMarkdown(info: InfoExecucao, metricas: Metricas): strin
 
   linhas.push("## Critérios de aceite (seção 10.4)", "");
   linhas.push("| Critério | Valor | Limite | Situação |", "|---|---|---|---|");
-  for (const c of metricas.criterios) linhas.push(`| ${c.descricao} | ${c.valor} | ${c.limite} | ${c.passou ? "ok" : "**FALHOU**"} |`);
+  const situacao = (c: Metricas["criterios"][number]) => (c.passou ? "ok" : c.diagnostico ? "fora (diagnóstico)" : "**FALHOU**");
+  for (const c of metricas.criterios) linhas.push(`| ${c.descricao}${c.diagnostico ? " *(diagnóstico)*" : ""} | ${c.valor} | ${c.limite} | ${situacao(c)} |`);
   linhas.push("");
 
   linhas.push("## Por estratégia", "");

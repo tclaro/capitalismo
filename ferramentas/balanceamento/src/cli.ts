@@ -124,8 +124,9 @@ async function principal(): Promise<number> {
     writeFileSync(`${base}.csv`, relatorioCsv(resultados));
     if (!info.diagnostico) aprovado &&= metricas.aprovado;
     const situacao = info.diagnostico ? "diagnóstico" : metricas.aprovado ? "APROVADO " : "REPROVADO";
-    console.log(`${confronto.padEnd(12)} ${situacao} ${metricas.criterios.filter((c) => c.passou).length}/${metricas.criterios.length} critérios, ${o.sementes} partidas em ${duracaoSegundos.toFixed(1)} s → ${base}.md`);
-    for (const c of metricas.criterios.filter((x) => !x.passou)) console.log(`   falhou: ${c.descricao}: ${c.valor} (limite ${c.limite})`);
+    const deAprovacao = metricas.criterios.filter((c) => !c.diagnostico);
+    console.log(`${confronto.padEnd(12)} ${situacao} ${deAprovacao.filter((c) => c.passou).length}/${deAprovacao.length} critérios, ${o.sementes} partidas em ${duracaoSegundos.toFixed(1)} s → ${base}.md`);
+    for (const c of metricas.criterios.filter((x) => !x.passou)) console.log(`   ${c.diagnostico || info.diagnostico ? "fora (diagnóstico)" : "falhou"}: ${c.descricao}: ${c.valor} (limite ${c.limite})`);
   }
   return o.exigirAprovacao && !aprovado ? 1 : 0;
 }

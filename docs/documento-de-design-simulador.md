@@ -249,6 +249,13 @@ T_i' = T_i + taxa_T × (1 − exp(−verba_PD / PD_ref))
   ```
 
   Sem ela, a tecnologia acumula sem limite e a vantagem da líder só cresce: quem fabrica sem P&D acaba com qualidade **abaixo** do produto comprado pronto, e a estratégia de P&D intenso vence quase sempre. Com a difusão, a liderança em P&D continua valendo, mas se dissipa sem investimento contínuo. 0 desliga o mecanismo.
+- **Fronteira tecnológica (proposta, ainda não implementada — decisão 26).** Na calibração da fase 0, nenhuma combinação de parâmetros conciliou "P&D compensa" com "nenhuma estratégia domina" (36 combinações, seção 10): quando a P&D rende, quem investe nela (premium) vence 45–57%; quando o confronto fica equilibrado, a P&D dá prejuízo em qualquer dose. Causa provável: a qualidade depende da tecnologia relativa à líder, e a tecnologia cresce sem teto; o ciclo qualidade → vendas → receita → mais P&D se realimenta, e a difusão só o amortece. Proposta: retorno decrescente perto de um teto por produto,
+
+  ```
+  T_i' = T_i + taxa_T × saturacao(verba_PD) × (1 − T_i / T_teto)
+  ```
+
+  A P&D compensaria no início (longe do teto) e a líder desaceleraria perto da fronteira, enquanto a difusão aproxima as seguidoras: vantagem real, mas limitada. Ensina maturidade tecnológica e retornos decrescentes da inovação. A validar com testes com alunos antes de implementar e recalibrar.
 - **Curva de aprendizado da fábrica** (acrescentada na calibração da fase 0; manual do Capitalism II: "a produtividade e a capacidade de uma unidade de fabricação aumentam quando o nível da unidade aumenta"). Cada fábrica acumula **experiência**, medida em meses de produção à capacidade nominal. Os níveis são definidos no preset por limiares de experiência, e cada nível tem multiplicadores de **capacidade** e de **custo de mão de obra** por unidade. Uma fábrica nova começa lenta e cara e melhora com o volume produzido; fábrica parada não aprende. Com várias fábricas do mesmo produto, a produção é dividida pela capacidade, e cada uma paga a mão de obra do seu nível. Ensina curva de aprendizado e economia de escala; torna a decisão de fabricar um investimento com período de maturação, e não uma vantagem imediata.
 - P&D **só afeta produtos fabricados**. Isso cria o trade-off central do make or buy: comprar pronto é rápido e barato no início; fabricar exige investimento, mas dá controle sobre custo e qualidade. Verba de P&D gasta antes de a fábrica ficar pronta acumula tecnologia para quando ela começar a produzir.
 
@@ -719,9 +726,9 @@ Relatórios de origem: `relatorio-professor-CAS0728899W11-1-20260929-*` e `relat
 
    **Confrontos da CLI** (`bun run balancear`, definidos na fase 0):
    - *todos* (confronto equilibrado: as 7 estratégias, uma empresa cada): **entra na aprovação**;
-   - *extremo* (as 7 mais a estratégia degenerada "preço mínimo" = custo, sem publicidade nem P&D): **entra na aprovação**; o preço mínimo não pode vencer mais de 15%;
+   - *extremo* (as 7 mais a estratégia degenerada "preço mínimo" = custo, sem publicidade nem P&D): **entra na aprovação só pelo critério desta seção** (decidido em 30/09/2026): o preço mínimo não pode vencer mais de 15%. Os demais critérios aparecem como diagnóstico. Com um jogador vendendo a preço de custo, as margens de todos caem, e a passiva, que não investiu, pode vencer às vezes: é consequência econômica, não desequilíbrio;
    - *subconjuntos* (4 ou 5 estratégias sorteadas): **só diagnóstico**. Com poucos concorrentes de verdade, a taxa "justa" de vitória já passa de 30%, e o limite de 40% não se aplica;
-   - *melhor resposta* (busca em grade da intensidade de uma estratégia): alerta se a melhor intensidade estiver na borda da grade e vencer mais de 40%.
+   - *melhor resposta* (busca em grade da intensidade de uma estratégia): quando o ótimo cai na borda da grade, a busca estende a grade naquela direção até 3 vezes. O alerta só dispara se a vitória continuar crescendo rumo ao extremo e passar de 40%. Um robô otimizado vencer bem acima de 40% contra seis robôs com intensidade padrão é esperado; o que a seção pede corrigir é um **ótimo extremo e trivial**. Na calibração da fase 0 (medido no candidato v0.3.0), o ótimo da publicidade foi interior: preço justo e ~14% da receita em publicidade. Acima de ~18%, a empresa passa a perder, e com 30% dá prejuízo (decidido em 30/09/2026: aceitar e registrar).
 5. **Robôs reaproveitados** como concorrentes dentro do jogo (turmas pequenas).
 6. **Pré-visualização para o professor:** botão "simular partida com robôs" para ver como um preset se comporta antes da aula.
 
@@ -820,7 +827,7 @@ Cada fase termina em algo utilizável.
 |---|---|---|
 | **PoC — Rede no laboratório** (primeira entrega) — **concluída em 29/09/2026** | `poc-rede.exe` com modos Professor e Aluno, relatório e roteiro de teste (seção 9.9) | Teste feito no laboratório real e relatório gerado, respondendo às duas perguntas (o executável roda? os alunos conectam?). Resultado: modo B adotado |
 | **Protótipo visual** (em paralelo à fase 0) | Telas navegáveis com dados fictícios e guia de estilo (seção 8.1) | Visual aprovado pelo autor antes da fase 1 |
-| **0 — Motor e balanceamento** | Pacote do motor (camada 1) com **árvore de produtos genérica**, catálogo completo em dados (anexo), robôs, CLI de balanceamento, preset `introdutorio` | Testes unitários das fórmulas (incluindo a nota do manual); determinismo (mesma semente = mesmo resultado); relatório de balanceamento cumprindo as métricas da seção 10 |
+| **0 — Motor e balanceamento** — **entregue em 30/09/2026, com pendência (decisão 26)** | Pacote do motor (camada 1) com **árvore de produtos genérica**, catálogo completo em dados (anexo), robôs, CLI de balanceamento, preset `introdutorio` | Testes unitários das fórmulas (incluindo a nota do manual); determinismo (mesma semente = mesmo resultado); relatório de balanceamento cumprindo as métricas da seção 10. Situação: motor, robôs, CLI e testes completos; o balanceamento fica em aberto até a fronteira tecnológica (seção 6.6) e os testes com alunos |
 | **1 — MVP em sala (rede local)** | Servidor Bun + SQLite + WebSocket, relógio no servidor, estado persistido a cada tick com retomada pausada, executável `.exe` portátil com modo servidor (modo B), várias salas simultâneas, chave de professor, PIN do professor e link do telão, entrada por endereço + código, guia de implantação do servidor, diagnóstico de rede, teste de carga, criar partida, tela de decisões, relógio (velocidade, pausa, modo rodada, avançar), painel do professor com visão geral, relatórios básicos, ranking | Piloto com uma turma real em laboratório sem falhas bloqueantes |
 | **2 — Aula completa** | Relatórios completos (DRE, balanço, fluxo de caixa), modo apresentação, debate final, exportação, salvar/abrir partida como arquivo, backup automático com rotação, modo A com tela inicial e descoberta UDP (para outras instituições), robôs no jogo, mercados paralelos, eventos básicos | Professor conduz o debate apenas com a ferramenta |
 | **3 — Finanças** | Camada 2: crédito, ações, dividendos, participações | Balanceamento reexecutado com a camada ativa |
@@ -859,6 +866,7 @@ Confirmar com o autor antes ou durante o planejamento:
 23. **Sons** — incluir efeitos sonoros (desligados por padrão) ou não?
 24. **Chave de professor (modo B)** — uma chave única compartilhada pelos professores da instituição (sugestão para o início) ou uma chave por professor, cadastrada pelo administrador do servidor (permite revogar um professor sem trocar a de todos)?
 25. **Endereço do servidor (modo B)** — reserva de IP no DHCP ou nome da máquina no domínio? Definir antes de imprimir o endereço nos laboratórios.
+26. **Fronteira tecnológica e recalibração da P&D** (aberta em 30/09/2026; seção 6.6 e `docs/calibracao-introdutorio.md`, seção 6) — implementar o teto tecnológico com retorno decrescente e recalibrar exigindo, ao mesmo tempo, equilíbrio no confronto e P&D com ótimo interior. **Adiada para depois dos testes com alunos**: até lá, o preset jogável é o `introdutorio/padrao` v0.2.0, em que P&D compensa, mas o robô premium bem ajustado vence ~77% das partidas entre robôs.
 
 ---
 

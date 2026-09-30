@@ -54,6 +54,8 @@ export interface Criterio {
   valor: string;
   limite: string;
   passou: boolean;
+  /** Só informativo neste confronto: não entra na aprovação. */
+  diagnostico?: boolean;
 }
 
 export interface Metricas {
@@ -183,12 +185,18 @@ export function calcularMetricas(resultados: readonly ResultadoSimulacao[], opco
     });
   }
 
+  // No confronto extremo, a seção 10.4 define um critério só: a decisão trivial não vence (decidido em
+  // 30/09/2026). Os demais aparecem como diagnóstico: com um jogador que vende a preço de custo, as
+  // margens de todos caem, e a passiva (que não investiu) pode vencer às vezes, o que é consequência
+  // econômica e não desequilíbrio.
+  if (opcoes.estrategiaExtrema) for (const c of criterios) if (c.id !== "melhor_resposta_extrema") c.diagnostico = true;
+
   return {
     partidas,
     porEstrategia,
     fracaoPartidasComDiferencaVisivel,
     fracaoRazoaveisComCreditoProlongado,
     criterios,
-    aprovado: criterios.every((c) => c.passou),
+    aprovado: criterios.every((c) => c.passou || c.diagnostico === true),
   };
 }

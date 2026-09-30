@@ -1,8 +1,10 @@
 # Calibração do preset `introdutorio/padrao`
 
-> Preset: `pacotes/catalogo/src/presets/introdutorio.ts` (**versão 0.2.0, aprovada em 29/09/2026**).
-> Referências: seções 6 e 10 do `documento-de-design-simulador.md`; decisões 3 (recorte), 7 (pontuação) e 13 (valores iniciais).
-> Relatório aprovado: [`docs/balanceamento/introdutorio-padrao/`](balanceamento/introdutorio-padrao/) (confronto equilibrado, extremo e subconjuntos).
+> Preset: `pacotes/catalogo/src/presets/introdutorio.ts` (**versão 0.2.0 — jogável, com pendência**).
+> Referências: seções 6 e 10 do `documento-de-design-simulador.md`; decisões 3 (recorte), 7 (pontuação), 13 (valores iniciais) e **26 (fronteira tecnológica, em aberto)**.
+> Relatórios: [`docs/balanceamento/introdutorio-padrao/`](balanceamento/introdutorio-padrao/).
+>
+> **Estado em 30/09/2026 (ver seção 6):** a v0.2.0 foi aprovada contra os robôs da época. A melhor resposta mostrou que aqueles robôs jogavam longe do ótimo; com os robôs ajustados, o premium vence ~77%. A recalibração (candidato v0.3.0) equilibrou o confronto, mas tornando a P&D inútil. Nenhuma combinação concilia as duas coisas no modelo atual; a correção proposta é a fronteira tecnológica. Decisão do autor: manter a v0.2.0 (P&D compensa) para os testes com alunos e voltar ao tema depois.
 
 ## 1. Origem dos valores
 
@@ -114,3 +116,69 @@ Métrica de cada rodada: taxa de vitória no confronto equilibrado com as 7 estr
 - **Marca perto do limite.** Com 38,6% no confronto equilibrado, ela está a 1,4 ponto do limite de 40%. Qualquer ajuste futuro que favoreça a marca deve ser acompanhado de nova rodada do balanceamento.
 - **Estratégia depende do horizonte.** Nos testes por horizonte (versão anterior, sem curva de aprendizado), o preço baixo dominava partidas de 6 meses (69%), e a marca só vencia em partidas longas. Vale repetir para 12 meses se o professor for usar partidas curtas.
 - **Confronto por subconjuntos (4–5 empresas) é só diagnóstico.** Nele a marca vence 49% dos mercados. Com poucos concorrentes de verdade (a passiva e a aleatória quase nunca vencem), a taxa "justa" de vitória já passa de 30%, e o limite de 40% da seção 10.4 não se aplica.
+
+## 6. Melhor resposta e pendência da P&D (30/09/2026)
+
+### 6.1 Melhor resposta sobre a v0.2.0 (robôs da época)
+
+Um robô otimizado por busca em grade contra os outros seis vencia muito: equilibrada 100%, premium 95,8%, marca 87,5%, preço baixo 75,0%, revenda 25,0% (24 partidas por ponto). Em todas, o ótimo era **preço no mercado ou um pouco abaixo, com mais publicidade** que os robôs padrão. Conclusão: os robôs jogavam longe do ótimo, e a aprovação da v0.2.0 valia para estratégias mal jogadas.
+
+**Robôs ajustados** (`pacotes/motor/src/robos/estrategias.ts`, mantendo a identidade de cada estratégia):
+
+| Estratégia | Faixas antigas | Faixas novas |
+|---|---|---|
+| Preço baixo | margem 15–35%, publicidade 0–2% | margem 28–45%, publicidade 2–5%, payback 12–18 meses |
+| Premium | prêmio 15–35%, P&D 8–15%, publicidade 2–6% | prêmio 3–12%, P&D 5–9%, publicidade 5–10% |
+| Marca | prêmio 3–12%, publicidade 12–22% | prêmio −3% a +5%, publicidade 14–22%, payback 12–16 meses |
+| Equilibrada | ajuste −3% a +5%, publicidade 3–7% | ajuste −8% a 0%, publicidade 6–11%, payback 12–18 meses |
+| Revenda | ajuste −10% a +2%, publicidade 3–8% | ajuste −13% a −4%, publicidade 7–13% |
+
+**Com os robôs ajustados, a v0.2.0 deixa de estar equilibrada:** premium 77,5%, equilibrada 9,0%, preço baixo 7,5%, revenda 4,5%, marca 1,5% (200 partidas, sementes `confirmacao-*`).
+
+### 6.2 Candidato v0.3.0: equilibrado, mas com P&D inútil (não adotado)
+
+Terceira varredura (432 combinações) e confirmação: pronto a 66% e fabricado a 55% do P_ref, difusão de 15%/mês, **verba de referência de P&D de R$ 80 mil/mês**, ganho de tecnologia de 5 pontos/mês, publicidade a R$ 0,50/hab, decaimento da marca de 15%/mês, curva forte, capex mínimo de R$ 50 mil.
+
+Valores concretos do candidato (para retomar):
+
+| Produto | Pronto | Mão de obra | Capex | Custo fixo |
+|---|---|---|---|---|
+| Leite engarrafado | R$ 3,96 | R$ 2,51 | R$ 157.000 | R$ 15.000 |
+| Iogurte | R$ 5,94 | R$ 2,85 | R$ 74.000 | R$ 8.000 |
+| Sorvete | R$ 11,88 | R$ 8,89 | R$ 50.000 | R$ 8.000 |
+| Sapato | R$ 118,80 | R$ 62,15 | R$ 52.000 | R$ 7.000 |
+| Carteira | R$ 52,80 | R$ 34,93 | R$ 50.000 | R$ 2.000 |
+
+Relatório oficial do candidato (500 partidas, sementes `balanceamento-*`): **aprovado** no confronto equilibrado (preço baixo 30,6%, marca 30,2%, equilibrada 16,8%, premium 14,0%, revenda 8,4%; passiva e aleatória 0%) e no extremo (preço mínimo 0%).
+
+A melhor resposta com grade estendível mostrou o defeito: **a P&D dá prejuízo em qualquer dose.**
+
+| Verba de P&D (% da receita) | 0% | 2% | 4% | 6% | 9% | 12% |
+|---|---|---|---|---|---|---|
+| Premium otimizado (vitórias) | 90% | 81% | 71% | 65% | 27% | 15% |
+| Equilibrada otimizada (vitórias) | 69% | 52% | 35% | 25% | 8% | 4% |
+
+"Não fazer P&D" é a decisão extrema e trivial que a seção 10.4 manda corrigir. A varredura não viu isso porque só media as taxas de vitória.
+
+Achado útil do mesmo candidato: **a publicidade tem ótimo interior.** As vitórias sobem até ~14% da receita e despencam depois (com 24% ou mais, quase zero; com 30%, prejuízo). Publicidade é decisão de dosagem, não atalho.
+
+### 6.3 Varredura da P&D: o conflito estrutural
+
+36 combinações de verba de referência (R$ 15–60 mil), ganho de tecnologia (3, 5 e 8 pontos/mês) e difusão (10, 15 e 25%/mês), com as demais alavancas do candidato:
+
+| Situação | Combinações |
+|---|---|
+| Confronto equilibrado aprovado | 14 |
+| P&D com ótimo interior (premium e equilibrada) | 1 |
+| As duas coisas | **0** |
+
+Quando a P&D compensa, o premium vence 45–57%; quando o confronto fica equilibrado, a P&D não compensa. No modelo atual, a tecnologia relativa à líder cresce sem teto e realimenta a vantagem. Proposta: **fronteira tecnológica** (seção 6.6 do design, decisão 26), com retorno decrescente perto de um teto por produto.
+
+### 6.4 Decisão (30/09/2026)
+
+Manter a **v0.2.0** como preset jogável para os testes com alunos, porque nela P&D, marca e fabricação são decisões que valem a pena. Registrar a limitação: entre robôs ajustados, o premium domina. Retomar a fronteira tecnológica e a recalibração depois dos testes com alunos.
+
+Ferramentas criadas nesta rodada, que ficam para a retomada:
+- critério do confronto extremo reduzido ao da seção 10.4;
+- melhor resposta com grade estendível e pool fixo de workers (corrige vazamento de memória);
+- os scripts de varredura (a transformar em comando da CLI quando o tema voltar).

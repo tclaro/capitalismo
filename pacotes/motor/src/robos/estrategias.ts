@@ -44,7 +44,8 @@ export const PRECO_BAIXO: Estrategia = {
   id: "preco_baixo",
   nome: "Preço baixo",
   descricao: "Margem mínima sobre o custo completo e volume alto; fabrica quando a fábrica se paga rápido.",
-  faixas: { margem: [0.15, 0.35], paybackMaximo: [8, 14], publicidade: [0, 0.02] },
+  // Faixas revistas pela melhor resposta (30/09/2026): o ótimo estava na margem máxima (35%).
+  faixas: { margem: [0.28, 0.45], paybackMaximo: [12, 18], publicidade: [0.02, 0.05] },
   decidir: (v, i) =>
     decisoesDoPlano(
       v,
@@ -57,7 +58,9 @@ export const PREMIUM: Estrategia = {
   id: "premium",
   nome: "Premium",
   descricao: "Fabrica tudo, investe pesado em P&D e cobra acima do mercado.",
-  faixas: { premio: [0.15, 0.35], pd: [0.08, 0.15], publicidade: [0.02, 0.06] },
+  // Revistas pela melhor resposta: o ótimo cobrava prêmio de 5% (padrão era 15–35%). Continua sendo
+  // quem mais investe em P&D e cobra acima do mercado.
+  faixas: { premio: [0.03, 0.12], pd: [0.05, 0.09], publicidade: [0.05, 0.1] },
   decidir: (v, i) =>
     decisoesDoPlano(
       v,
@@ -76,7 +79,8 @@ export const MARCA: Estrategia = {
   id: "marca",
   nome: "Marca",
   descricao: "Publicidade intensa e preço um pouco acima do mercado.",
-  faixas: { publicidade: [0.12, 0.22], premio: [0.03, 0.12], paybackMaximo: [8, 12] },
+  // Revistas pela melhor resposta: o ótimo cobrava prêmio 0%. Continua sendo quem mais gasta em publicidade.
+  faixas: { publicidade: [0.14, 0.22], premio: [-0.03, 0.05], paybackMaximo: [12, 16] },
   decidir: (v, i) =>
     decisoesDoPlano(
       v,
@@ -89,7 +93,8 @@ export const EQUILIBRADA: Estrategia = {
   id: "equilibrada",
   nome: "Equilibrada",
   descricao: "Acompanha o preço dos concorrentes, com verbas moderadas de publicidade e P&D.",
-  faixas: { ajuste: [-0.03, 0.05], publicidade: [0.03, 0.07], pd: [0.02, 0.05], paybackMaximo: [10, 14] },
+  // Revistas pela melhor resposta: o ótimo ficava 7% abaixo do mercado, com publicidade de 9%.
+  faixas: { ajuste: [-0.08, 0], publicidade: [0.06, 0.11], pd: [0.02, 0.05], paybackMaximo: [12, 18] },
   decidir: (v, i) =>
     decisoesDoPlano(
       v,
@@ -108,7 +113,8 @@ export const REVENDA: Estrategia = {
   id: "revenda",
   nome: "Revenda",
   descricao: "Só compra pronto, nunca fabrica; preço um pouco abaixo do mercado.",
-  faixas: { ajuste: [-0.1, 0.02], publicidade: [0.03, 0.08] },
+  // Revistas pela melhor resposta: o ótimo ficava 10% abaixo do mercado, com publicidade de 10,5%.
+  faixas: { ajuste: [-0.13, -0.04], publicidade: [0.07, 0.13] },
   decidir: (v, i) =>
     decisoesDoPlano(
       v,
