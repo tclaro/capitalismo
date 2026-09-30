@@ -546,7 +546,7 @@ Nomes de pastas, arquivos e identificadores em português (decisão 2).
 /pacotes/catalogo             catálogo de produtos, receitas, culturas e recursos; presets (dados versionados)
 /apps/web                     frontend (tela inicial, aluno, professor, telão)
 /apps/servidor                servidor Bun: HTTP, WebSocket, relógio, descoberta UDP, SQLite, autenticação
-/apps/servidor/migracoes      migrações do esquema SQLite (aplicadas na inicialização)
+/apps/servidor/src/dados      SQLite: migrações embutidas (migracoes/*.sql), repositório, acessos
 /ferramentas/balanceamento    CLI de balanceamento e relatórios
 /ferramentas/teste-de-carga   clientes simulados para teste de carga (ex.: 60 alunos)
 /tools/poc-rede               PoC de rede (seção 9.9), mantida como estava
@@ -601,6 +601,26 @@ Detalhes:
 - Alunos entram com **código da sala + nome/apelido + equipe**. O servidor emite um token de sessão (cookie) para reconexão.
 - Toda decisão é validada no servidor. **As regras de acesso ficam no código do servidor** (equipe só vê e altera o que é dela; dados públicos do mercado são de todos; professor vê tudo) e são cobertas por **testes automatizados de permissão**.
 - Acesso por `http` sem TLS é aceitável numa rede fechada de laboratório, com códigos de sala e sem dados sensíveis. Código da sala aleatório; limite de tentativas de entrada.
+
+**Como ficou implementado (fase 1, entrega 3):**
+- **Código da sala:** 5 caracteres de um alfabeto sem ambíguos (sem 0/O, 1/I/L).
+- **Cookies por sala e por papel** (`sm_a_<código>` e `sm_p_<código>`): `HttpOnly; SameSite=Strict; Path=/`, validade de 16 h, sem `Secure` (rede http). No banco fica só o SHA-256 do token. As sessões sobrevivem ao reinício do servidor.
+- **PIN:** guardado como hash; aparece só na criação da sala ou quando o professor gera outro (nunca pelo WebSocket).
+- **Token do telão:** 32 bytes, guardado em claro (o professor precisa reabrir o link a qualquer momento); revogar derruba os telões conectados.
+- **`Origin`** conferido no upgrade do WebSocket e em todo pedido que muda algo; os POST exigem JSON (força o *preflight* CORS, que nunca é concedido). Em `--dev`, aceita também a origem do Vite.
+- **Limites de tentativas** (persistidos), com bloqueio que dobra a cada estouro:
+
+  | O quê | Chave | Falhas em 10 min | Primeiro bloqueio |
+  |---|---|---|---|
+  | Chave de professor | IP | 5 | 1 min |
+  | PIN | IP | 5 | 1 min |
+  | PIN | sala | 20 | 5 min |
+  | Código inexistente | IP | 20 | 1 min |
+  | Entrada de aluno recusada | IP | 30 | 1 min |
+
+- **WebSocket:** até 16 KB por mensagem recebida; balde de 30 mensagens com recarga de 10/s por conexão (a conexão é fechada após 20 recusas); *pings* automáticos; limite de *backpressure*.
+- **Administração** (`/api/admin/*`): exige IP e `Host` de loopback (o `Host` bloqueia DNS *rebinding*).
+- **Cabeçalhos:** `Referrer-Policy: no-referrer` (não vaza o token do telão), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`.
 
 **Online (modo C, fase 5):**
 - Contas de professor com senha protegida por hash (`Bun.password`, argon2), sessão em cookie `HttpOnly`/`Secure`, limite de tentativas de login.
@@ -789,6 +809,25 @@ Relatórios de origem: `relatorio-professor-CAS0728899W11-1-20260929-*` e `relat
 | `ajustes_parametros` | Log de alterações de parâmetros feitas ao vivo pelo professor |
 | `transacoes_financeiras` | Camada 2: empréstimos, emissões, recompras, dividendos, participações |
 | `log_ticks` | Auditoria: tick, duração do processamento, erros |
+
+**Implementado na fase 1** (migrações `001_inicial.sql` e `002_acessos.sql`). O esboço acima continua como referência para as camadas seguintes. Na fase 1, catálogo, empresas e instalações vivem dentro do estado do motor (JSON), e não em tabelas próprias.
+
+| Tabela | Conteúdo |
+|---|---|
+| `salas` | Código, status, tick, metadados em JSON (configuração, vagas, equipes, membros, prontos) |
+| `estado_atual` | Estado do motor e acumulador semanal, sobrescritos a cada tick |
+| `estado_fim_mes` | Estado de cada fim de mês; mês 0 = início da partida (base do replay) |
+| `entradas_tick` | Somente inclusão: as entradas passadas ao motor em cada tick, com a versão do motor (replay) |
+| `decisoes` | Somente inclusão: decisões aceitas; `aplicada_no_tick` nulo = ainda na fila |
+| `comandos` | Respostas dos comandos já executados (idempotência, inclusive após reinício) |
+| `historico_oferta_semanal` / `historico_empresa_mensal` | Séries dos gráficos; o mensal guarda o fechamento e a pontuação |
+| `log_ticks` | Tempo de gravação de cada tick |
+| `acessos_sala` | Hash do PIN e token do telão |
+| `sessoes` | Hash do token, sala, papel, membro, expiração |
+| `tentativas` | Limite de tentativas: falhas, início da janela, bloqueado até |
+| `configuracao_servidor` | Hash da chave de professor |
+
+Tudo o que o tick produz é gravado numa única transação; se ela falhar, a sala pausa com motivo "erro", e o estado em memória continua igual ao do banco.
 
 ---
 

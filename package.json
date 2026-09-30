@@ -13,7 +13,8 @@
     "test": "bun test pacotes ferramentas apps",
     "typecheck": "tsc --noEmit -p pacotes/motor && tsc --noEmit -p pacotes/motor/testes && tsc --noEmit -p pacotes/catalogo && tsc --noEmit -p pacotes/catalogo/testes && tsc --noEmit -p pacotes/compartilhado && tsc --noEmit -p pacotes/compartilhado/testes && tsc --noEmit -p ferramentas/balanceamento && tsc --noEmit -p apps/servidor",
     "verificar": "bun run typecheck && bun run test",
-    "balancear": "bun ferramentas/balanceamento/src/cli.ts"
+    "balancear": "bun ferramentas/balanceamento/src/cli.ts",
+    "servidor": "bun apps/servidor/src/main.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",

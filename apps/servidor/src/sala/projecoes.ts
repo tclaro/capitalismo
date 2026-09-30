@@ -57,11 +57,18 @@ function rankingDoMercado(sala: Sala, mercado: string) {
   return ranking(sala.estado, mercado, sala.config.criterio);
 }
 
+/** Visão de um aluno: igual para todos os membros da equipe (é enviada uma vez por equipe). */
 export function projetarAluno(sala: Sala, membroId: string): VisaoAluno {
   const membro = sala.membro(membroId);
   if (!membro) throw new Error(`membro ${membroId} não existe`);
-  const empresa = sala.estado.empresas.find((e) => e.id === membro.empresa)!;
-  const vaga = sala.vaga(membro.empresa)!;
+  return projetarEquipe(sala, membro.empresa);
+}
+
+export function projetarEquipe(sala: Sala, empresaId: string): VisaoAluno {
+  const membro = { empresa: empresaId };
+  const empresa = sala.estado.empresas.find((e) => e.id === empresaId);
+  if (!empresa) throw new Error(`empresa ${empresaId} não existe`);
+  const vaga = sala.vaga(empresaId)!;
   let rk: VisaoAluno["ranking"] = null;
   if (sala.config.rankingVisivel !== "oculto") {
     const completo = rankingDoMercado(sala, empresa.mercado);
@@ -109,7 +116,7 @@ export function projetarTelao(sala: Sala): VisaoTelao {
   };
 }
 
-export function projetarProfessor(sala: Sala, linkTelao: string, pin: string | null): VisaoProfessor {
+export function projetarProfessor(sala: Sala, linkTelao: string, pin: string | null, conectados: ReadonlySet<string> = new Set()): VisaoProfessor {
   return {
     sala: infoDe(sala),
     relogio: relogioDe(sala),
@@ -134,7 +141,7 @@ export function projetarProfessor(sala: Sala, linkTelao: string, pin: string | n
         lucroUltimoMes: e.contabil.ultimoFechamento?.lucroLiquido ?? null,
         pontosDeVenda: e.pontosDeVenda.length,
         fabricas: e.fabricas.length,
-        membros: sala.membros.filter((m) => m.empresa === e.id).map((m) => ({ id: m.id, nome: m.nome, conectado: false })),
+        membros: sala.membros.filter((m) => m.empresa === e.id).map((m) => ({ id: m.id, nome: m.nome, conectado: conectados.has(m.id) })),
         pronto: sala.prontos.has(e.id),
         pendentes: sala.fila.filter((f) => f.empresa === e.id).length,
         ofertas: e.ofertas.map((o) => ({

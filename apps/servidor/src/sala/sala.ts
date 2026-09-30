@@ -440,7 +440,7 @@ export class Sala {
     });
   }
 
-  configurar(idComando: string, mudancas: Partial<Pick<ConfigSala, "segundosPorTick" | "modo" | "edicaoNaPausa" | "rankingVisivel" | "avancoQuandoProntas">>): Resposta {
+  configurar(idComando: string, mudancas: { [K in "segundosPorTick" | "modo" | "edicaoNaPausa" | "rankingVisivel" | "avancoQuandoProntas"]?: ConfigSala[K] | undefined }): Resposta {
     return this.comando(idComando, () => {
       if (this.status === "encerrada") return { ok: false, motivo: "a partida já foi encerrada" };
       const antes = this.config.segundosPorTick;
@@ -616,6 +616,6 @@ function semEmpresa(d: Decisao): DecisaoDoAluno {
   return resto as DecisaoDoAluno;
 }
 
-function definidos<T extends object>(o: T): Partial<T> {
-  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>;
+function definidos<T extends object>(o: T): { [K in keyof T]?: Exclude<T[K], undefined> } {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as { [K in keyof T]?: Exclude<T[K], undefined> };
 }

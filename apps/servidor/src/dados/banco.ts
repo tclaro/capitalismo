@@ -6,9 +6,13 @@ import { Database } from "bun:sqlite";
 import { accessSync, constants, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import m001 from "./migracoes/001_inicial.sql" with { type: "text" };
+import m002 from "./migracoes/002_acessos.sql" with { type: "text" };
 
 /** Migrações em ordem; cada uma roda uma única vez, registrada em `schema_version`. */
-export const MIGRACOES: readonly { versao: number; sql: string }[] = [{ versao: 1, sql: m001 }];
+export const MIGRACOES: readonly { versao: number; sql: string }[] = [
+  { versao: 1, sql: m001 },
+  { versao: 2, sql: m002 },
+];
 
 export const BACKUPS_MANTIDOS = 5;
 
