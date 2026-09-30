@@ -6,12 +6,14 @@ import { novoAcumuladoMes } from "./contabilidade";
 import { estoqueVazio } from "./dinheiro";
 import type { Preset } from "./preset";
 import { resolverPreset } from "./resolucao";
+import { decidirRobo, ESTRATEGIAS, sortearIntensidade } from "./robos";
 import {
   type EstadoAtivo,
   type EstadoEmpresa,
   type EstadoMercado,
   type EstadoOferta,
   type EstadoPartida,
+  type EstadoRobo,
   type ModuloId,
   type ParametrosResolvidos,
   VERSAO_ESTADO,
@@ -60,6 +62,9 @@ function novaOferta(produto: string, p: ParametrosResolvidos): EstadoOferta {
     tecnologia: p.tecnologia.tecnologiaInicial,
     qualidadeReferencia: 0,
     demandaAnterior: 0,
+    vendasAnterior: 0,
+    notaAnterior: 0,
+    participacaoAnterior: 0,
     emRuptura: false,
   };
 }
@@ -122,14 +127,12 @@ export function criarPartida(config: ConfigPartida): EstadoPartida {
         mesesComCreditoEmergencial: 0,
       },
       penalidadePontuacao: 0,
-      robo: e.robo
-        ? { estrategia: e.robo.estrategia, intensidade: { ...(e.robo.intensidade ?? {}) }, gerador: criarGerador(config.semente, `robo:${id}`) }
-        : null,
+      robo: e.robo ? criarRobo(e.robo, config.semente, id) : null,
       proximoAtivo: pv.iniciais + 1,
     };
   });
 
-  return {
+  const estado: EstadoPartida = {
     versaoEstado: VERSAO_ESTADO,
     versaoMotor: VERSAO_MOTOR,
     semente: config.semente,
@@ -140,4 +143,15 @@ export function criarPartida(config: ConfigPartida): EstadoPartida {
     empresas,
     decisoesPendentes: [],
   };
+  // Primeira decisão dos robôs, para que já operem desde o tick 1.
+  for (const e of estado.empresas) if (e.robo) estado.decisoesPendentes.push(...decidirRobo(estado, e.id));
+  return estado;
+}
+
+function criarRobo(config: NonNullable<ConfigEmpresa["robo"]>, semente: string, empresaId: string): EstadoRobo {
+  if (!ESTRATEGIAS[config.estrategia]) {
+    throw new ConfigInvalida(`estratégia de robô desconhecida: "${config.estrategia}" (disponíveis: ${Object.keys(ESTRATEGIAS).join(", ")})`);
+  }
+  const gerador = criarGerador(semente, `robo:${empresaId}`);
+  return { estrategia: config.estrategia, intensidade: sortearIntensidade(config.estrategia, gerador, config.intensidade), gerador };
 }

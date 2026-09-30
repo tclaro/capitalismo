@@ -32,4 +32,7 @@ export { capacidadeDeVenda, ofertaAtiva, temFabricaOperando } from "./vendas";
 export { capacidadeDeProducao } from "./fabricacao";
 export { type CalculoIR, calcularIR, quotaDeDepreciacao } from "./financeiro";
 export { calcularPontuacao, type CriterioPontuacao, type PosicaoRanking, ranking } from "./pontuacao";
+export { visaoDaEmpresa, type InsumoReceitaVisao, type OfertaConcorrente, type OfertaPropria, type ProdutoVisivel, type VisaoEmpresa } from "./visao";
+export { decidirRobo, diaDeDecisaoDosRobos, ESTRATEGIAS, ESTRATEGIAS_RAZOAVEIS, type Estrategia, type Intensidade, sortearIntensidade } from "./robos";
+export { custoFabricado, custoPronto, paybackDaFabrica } from "./robos/comum";
 export { clonarEstado, ETAPAS, passo, passoMutavel } from "./passo";

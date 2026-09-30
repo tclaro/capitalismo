@@ -203,6 +203,9 @@ export function etapaVendas(ctx: Contexto): ResultadoVendaOferta[] {
       r.vendas = 0;
     }
     oferta.demandaAnterior = r.ativa ? r.demanda : 0;
+    oferta.vendasAnterior = r.vendas;
+    oferta.notaAnterior = r.nota;
+    oferta.participacaoAnterior = r.participacao;
     if (oferta.estoque.quantidade > QUASE_ZERO) oferta.qualidadeReferencia = oferta.estoque.qualidade;
     else if (r.vendas > 0) oferta.qualidadeReferencia = r.qualidade;
 

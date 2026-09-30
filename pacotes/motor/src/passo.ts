@@ -18,6 +18,7 @@ import {
 } from "./etapas";
 import { etapaCustoFixoFabricas, etapaFabricacao } from "./fabricacao";
 import { etapaCreditoEmergencial, etapaDepreciacaoEIR, etapaFechamentoMensal, etapaJurosEmergenciais } from "./financeiro";
+import { etapaRobos } from "./robos";
 import type { EntradasTick, EstadoPartida, ModuloId, ResultadoTick } from "./tipos";
 import { type ResultadoVendaOferta, etapaFidelidade, etapaVendas } from "./vendas";
 
@@ -52,6 +53,7 @@ export const ETAPAS: readonly Etapa[] = [
   { passo: 12, nome: "depreciação e imposto de renda", modulo: "nucleo", executar: (ctx) => etapaDepreciacaoEIR(ctx) },
   { passo: 11, nome: "crédito emergencial", modulo: "nucleo", executar: (ctx) => etapaCreditoEmergencial(ctx) },
   { passo: 12, nome: "fechamento mensal", modulo: "nucleo", executar: (ctx) => etapaFechamentoMensal(ctx) },
+  { passo: 13, nome: "decisões dos robôs", modulo: "nucleo", executar: (ctx) => etapaRobos(ctx) },
 ];
 
 /** Cópia profunda de um valor JSON. O estado é JSON puro por contrato (ver `tipos.ts`). */

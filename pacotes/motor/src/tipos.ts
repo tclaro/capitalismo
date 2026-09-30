@@ -139,6 +139,10 @@ export interface EstadoOferta {
   qualidadeReferencia: number;
   /** Demanda recebida no tick anterior, antes dos limites de estoque e capacidade (para o preço médio). */
   demandaAnterior: number;
+  /** Vendas, nota e participação no tick anterior (nota e participação são informação pública). */
+  vendasAnterior: number;
+  notaAnterior: number;
+  participacaoAnterior: number;
   /** Havia ruptura no tick anterior (para emitir aviso só na transição). */
   emRuptura: boolean;
 }
