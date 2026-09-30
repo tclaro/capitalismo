@@ -138,6 +138,47 @@ describe("P&D e tecnologia", () => {
   });
 });
 
+describe("difusão tecnológica", () => {
+  const comDifusao = (difusao: number) => ({ ...PRESET_TESTE, tecnologia: { ...PRESET_TESTE.tecnologia, difusaoTecnologicaMensal: difusao } });
+
+  test("sem difusão, quem não investe fica parado; com difusão, fecha a fração mensal da distância até a líder", () => {
+    // A investe (tecnologia sobe); B não investe. Com difusão de 50%/mês, depois de 30 ticks B fechou
+    // (quase) metade da distância média — o valor exato depende da trajetória de A, então comparamos com a fórmula por tick.
+    const rodarCom = (d: number) =>
+      rodar(partidaDeTeste(["A", "B"], { preset: comDifusao(d) }), 30, (t) => (t === 1 ? { decisoes: [decidir("emp_01", LEITE, { pdMensal: 100_000_000 })] } : {})).estado;
+    const sem = rodarCom(0);
+    expect(oferta(sem, "emp_02", LEITE).tecnologia).toBe(10);
+    const com = rodarCom(0.5);
+    const ta = oferta(com, "emp_01", LEITE).tecnologia;
+    const tb = oferta(com, "emp_02", LEITE).tecnologia;
+    expect(ta).toBeCloseTo(oferta(sem, "emp_01", LEITE).tecnologia, 12); // a líder não é afetada
+    expect(tb).toBeGreaterThan(10);
+    expect(tb).toBeLessThan(ta);
+  });
+
+  test("um tick de difusão: T_B' = T_B + d_tick × (T_max − T_B)", () => {
+    const e = partidaDeTeste(["A", "B"], { preset: comDifusao(0.3) });
+    e.empresas[0]!.ofertas[0]!.tecnologia = 40; // líder artificial (ajuste de estado só para o teste)
+    const { estado } = rodar(e, 1, () => ({}), false);
+    const d = 1 - 0.7 ** (1 / 30);
+    expect(oferta(estado, "emp_02", LEITE).tecnologia).toBeCloseTo(10 + d * 30, 12);
+    expect(oferta(estado, "emp_01", LEITE).tecnologia).toBe(40);
+  });
+
+  test("difusão não depende da ordem das empresas", () => {
+    const final = (nomes: string[]) => {
+      const e = partidaDeTeste(nomes, { preset: comDifusao(0.2) });
+      const verba: Record<string, number> = { Alfa: 50_000_000, Beta: 1_000_000, Gama: 2_000_000 };
+      const decisoes = e.empresas.map((x) => decidir(x.id, LEITE, { pdMensal: verba[x.nome]! }));
+      const { estado } = rodar(e, 45, (t) => (t === 1 ? { decisoes } : {}), false);
+      return Object.fromEntries(estado.empresas.map((x) => [x.nome, x.ofertas[0]!.tecnologia]));
+    };
+    const a = final(["Alfa", "Beta", "Gama"]);
+    const b = final(["Gama", "Alfa", "Beta"]);
+    for (const nome of ["Alfa", "Beta", "Gama"]) expect(b[nome]!).toBeCloseTo(a[nome]!, 12);
+  });
+});
+
 describe("comprar pronto e fabricar ao mesmo tempo", () => {
   test("estoque mistura os lotes: custo e qualidade médios ponderados", () => {
     const { estado } = comFabrica({ producaoMensal: 30_000, compraMensal: 30_000 });

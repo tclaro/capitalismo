@@ -116,6 +116,11 @@ export interface ParametrosTecnologia {
   readonly taxaTecnologiaMensal: number;
   /** Verba mensal de P&D que leva a 63% do efeito máximo, em centavos. */
   readonly verbaReferenciaMensal: number;
+  /**
+   * Difusão tecnológica: fração da distância até a tecnologia líder do mercado que cada empresa fecha
+   * por mês, por imitação (0 = sem difusão). A liderança em P&D se dissipa sem investimento contínuo.
+   */
+  readonly difusaoTecnologicaMensal: number;
 }
 
 /** Alocação das vendas no varejo (seção 6.11). */
@@ -343,6 +348,7 @@ export function validarPreset(preset: Preset): string[] {
   c.positivo(t.tecnologiaBase, "tecnologia.tecnologiaBase");
   c.naoNegativo(t.taxaTecnologiaMensal, "tecnologia.taxaTecnologiaMensal");
   c.positivo(t.verbaReferenciaMensal, "tecnologia.verbaReferenciaMensal");
+  c.fracao(t.difusaoTecnologicaMensal, "tecnologia.difusaoTecnologicaMensal");
 
   const v = preset.vendas;
   c.naoNegativo(v.sensibilidadeNota, "vendas.sensibilidadeNota");

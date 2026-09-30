@@ -84,6 +84,7 @@ export interface ParametrosResolvidos {
     tecnologiaBase: number;
     taxaTecnologiaMensal: number;
     verbaReferenciaMensal: Centavos;
+    difusaoTecnologicaMensal: number;
   };
   vendas: { sensibilidadeNota: number; perdaSubstituicao: number; multiploTetoPreco: number };
   pontoDeVenda: {

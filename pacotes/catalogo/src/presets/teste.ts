@@ -99,7 +99,7 @@ export const PRESET_TESTE: Preset = {
     pesoReconhecimento: 0.5,
     pesoFidelidade: 0.5,
   },
-  tecnologia: { tecnologiaInicial: 10, tecnologiaBase: 20, taxaTecnologiaMensal: 5, verbaReferenciaMensal: reais(20_000) },
+  tecnologia: { tecnologiaInicial: 10, tecnologiaBase: 20, taxaTecnologiaMensal: 5, verbaReferenciaMensal: reais(20_000), difusaoTecnologicaMensal: 0 },
   vendas: { sensibilidadeNota: 0.1, perdaSubstituicao: 0.5, multiploTetoPreco: 2 },
   pontoDeVenda: {
     custoAbertura: reais(80_000),

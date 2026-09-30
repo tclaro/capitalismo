@@ -15,6 +15,7 @@ import { movimentarCaixa, reconhecerResultado } from "./contabilidade";
 import type { Contexto } from "./contexto";
 import { arredondarCentavos, darEntrada, parcelaDoDia } from "./dinheiro";
 import { qualidadeFabricada, tecnologiaNova, tecnologiaRelativa } from "./formulas/qualidade";
+import { taxaMensalParaTick } from "./formulas/tempo";
 import type { EstadoEmpresa, EstadoOferta, ProdutoResolvido } from "./tipos";
 import { temFabricaOperando } from "./vendas";
 
@@ -39,6 +40,7 @@ export function etapaFabricacao(ctx: Contexto): void {
   const n = ctx.ticksPorMes;
   const taxaTec = p.tecnologia.taxaTecnologiaMensal / n;
   const referenciaPD = p.tecnologia.verbaReferenciaMensal / n;
+  const difusao = taxaMensalParaTick(p.tecnologia.difusaoTecnologicaMensal, n);
 
   // 1. P&D do dia e nova tecnologia.
   for (const empresa of ctx.estado.empresas) {
@@ -55,10 +57,16 @@ export function etapaFabricacao(ctx: Contexto): void {
   for (const mercado of ctx.estado.mercados) {
     const empresas = ctx.estado.empresas.filter((e) => e.mercado === mercado.id);
 
-    // 2. Tecnologia máxima por produto no mercado.
+    // 2. Tecnologia máxima por produto no mercado; depois, difusão: cada empresa fecha uma fração da
+    //    distância até a líder (a líder não muda, então T_max continua o mesmo).
     const tecnologiaMaxima = new Map<string, number>();
     for (const e of empresas) {
       for (const o of e.ofertas) tecnologiaMaxima.set(o.produto, Math.max(tecnologiaMaxima.get(o.produto) ?? 0, o.tecnologia));
+    }
+    if (difusao > 0) {
+      for (const e of empresas) {
+        for (const o of e.ofertas) o.tecnologia += difusao * (tecnologiaMaxima.get(o.produto)! - o.tecnologia);
+      }
     }
 
     // 3. Produção desejada, limitada pela capacidade.

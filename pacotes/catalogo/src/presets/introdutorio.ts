@@ -175,6 +175,7 @@ export const PRESET_INTRODUTORIO: Preset = {
     tecnologiaBase: 20,
     taxaTecnologiaMensal: 5,
     verbaReferenciaMensal: reais(20_000),
+    difusaoTecnologicaMensal: 0,
   },
   vendas: { sensibilidadeNota: 0.1, perdaSubstituicao: 0.5, multiploTetoPreco: 2 },
   pontoDeVenda: {
