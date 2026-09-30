@@ -1,0 +1,11 @@
+{
+  "name": "@simulador/balanceamento",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CLI de balanceamento: simula partidas em massa com robôs e gera relatórios (seção 10).",
+  "dependencies": {
+    "@simulador/catalogo": "workspace:*",
+    "@simulador/motor": "workspace:*"
+  }
+}

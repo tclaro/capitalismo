@@ -1,0 +1,13 @@
+{
+  "name": "@simulador/catalogo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Catálogo de produtos, receitas e presets (seção 6.7 e anexo arvore-de-produtos.md). Somente dados e validação.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@simulador/motor": "workspace:*"
+  }
+}

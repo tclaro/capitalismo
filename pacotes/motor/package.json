@@ -1,0 +1,10 @@
+{
+  "name": "@simulador/motor",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Motor de simulação puro e determinístico (seção 3, princípio 3; seção 6). Sem dependências de runtime.",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

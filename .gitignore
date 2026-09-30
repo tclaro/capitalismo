@@ -2,3 +2,5 @@ node_modules/
 dist/
 *.exe
 relatorios-poc-rede/
+# saídas da CLI de balanceamento (relatórios aprovados vão para docs/balanceamento/)
+ferramentas/balanceamento/saida/

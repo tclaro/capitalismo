@@ -1,0 +1,22 @@
+{
+  "name": "simulador-de-mercado",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Simulador de Mercado para ensino de Administração (ver docs/documento-de-design-simulador.md)",
+  "workspaces": [
+    "pacotes/*",
+    "ferramentas/*"
+  ],
+  "scripts": {
+    "test": "bun test pacotes ferramentas",
+    "typecheck": "tsc --noEmit -p pacotes/motor && tsc --noEmit -p pacotes/motor/testes && tsc --noEmit -p pacotes/catalogo && tsc --noEmit -p pacotes/catalogo/testes && tsc --noEmit -p ferramentas/balanceamento",
+    "verificar": "bun run typecheck && bun run test",
+    "balancear": "bun ferramentas/balanceamento/src/cli.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "fast-check": "^4.3.0",
+    "typescript": "^7.0.2"
+  }
+}

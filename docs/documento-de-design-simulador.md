@@ -2,7 +2,7 @@
 
 > **Nome provisório:** Simulador de Mercado (inspirado em *Capitalism*, Enlight Software, 1995)
 > **Autor:** Thiago Claro — Fractal Data
-> **Versão:** 0.6 — setembro de 2026 (resultado da PoC de rede; modo B — servidor fixo — adotado como padrão na instituição; acesso remoto do professor por chave e PIN; estado persistido em disco a cada tick)
+> **Versão:** 0.7 — setembro de 2026 (decisões para a fase 0: pastas em português, partida típica de 24 meses, make or buy coexistindo, crédito emergencial com amortização automática, IR com compensação de prejuízo). Versão 0.6: resultado da PoC de rede e modo B adotado
 > **Status:** visão e requisitos aprovados; plano de implementação a ser produzido
 > **Anexo:** `docs/arvore-de-produtos.md` — lista completa de produtos, cadeias e calendário agrícola
 
@@ -242,7 +242,9 @@ T_i' = T_i + taxa_T × (1 − exp(−verba_PD / PD_ref))
 - A qualidade **se propaga pela cadeia**: um aço de qualidade alta melhora o motor, que melhora o carro. Isso ensina por que controlar a cadeia (ou escolher bem o fornecedor) importa.
 
 - `T_max` = maior tecnologia entre as empresas do mercado para aquele produto (no mínimo `T_base`, para não dividir por zero).
-- P&D **só afeta produtos fabricados**. Isso cria o trade-off central do make or buy: comprar pronto é rápido e barato no início; fabricar exige investimento, mas dá controle sobre custo e qualidade.
+- P&D **só afeta produtos fabricados**. Isso cria o trade-off central do make or buy: comprar pronto é rápido e barato no início; fabricar exige investimento, mas dá controle sobre custo e qualidade. Verba de P&D gasta antes de a fábrica ficar pronta acumula tecnologia para quando ela começar a produzir.
+
+**Comprar pronto e fabricar podem coexistir** no mesmo produto (decidido em 29/09/2026): a equipe revende enquanto a fábrica está em obra ou completa o estoque quando falta capacidade. O estoque guarda valor total e quantidade, então custo e qualidade do produto vendido são médias ponderadas dos lotes; os relatórios mostram a origem de cada lote.
 
 ### 6.7 Árvore de produtos
 
@@ -315,10 +317,12 @@ vendas_i = min(demanda_i, estoque_i, capacidade_venda_disponivel_i)
 
 ### 6.12 Contabilidade (a cada mês de jogo)
 
-- **DRE:** receita − custo dos produtos vendidos (custo médio do estoque, incluindo exaustão de jazidas) = lucro bruto − despesas (publicidade, P&D, custos fixos de instalações e pontos de venda, armazenagem) = lucro operacional − juros = lucro antes do IR − IR (`aliquota_ir` sobre lucro positivo) = lucro líquido.
+- **DRE:** receita − custo dos produtos vendidos (custo médio do estoque, incluindo exaustão de jazidas) = lucro bruto − despesas (publicidade, P&D, custos fixos de instalações e pontos de venda, armazenagem, depreciação) = lucro operacional − juros = lucro antes do IR − IR = lucro líquido.
+- **IR com compensação de prejuízo** (decidido em 29/09/2026): `aliquota_ir` incide sobre o lucro mensal positivo depois de abater o prejuízo fiscal acumulado, limitado a `trava_compensacao` do lucro do mês (padrão 30%, como a regra brasileira). Assim, quem investe no início (fábrica, P&D) não é punido duas vezes.
 - **Balanço:** caixa, estoque (a custo), imobilizado (instalações e pontos de venda, com depreciação linear `vida_util`), recursos naturais (jazidas, reduzidos pela exaustão), dívidas, patrimônio líquido.
 - **Fluxo de caixa:** operacional, investimento, financiamento.
-- **Caixa negativo (núcleo):** crédito emergencial automático com juros altos (`juros_emergencial`). Ensina o custo de má gestão de caixa sem eliminar a equipe.
+- **Caixa negativo (núcleo):** crédito emergencial automático com juros altos (`juros_emergencial`). Ensina o custo de má gestão de caixa sem eliminar a equipe. Decidido em 29/09/2026: o crédito é sacado no valor do déficit, rende juros diários e é **amortizado automaticamente** assim que o caixa volta a ficar positivo; não há limite. A penalidade de pontuação por falência (princípio 7) é um parâmetro, com padrão 0.
+- **Dinheiro em centavos inteiros** no motor, para que "caixa = soma dos lançamentos" e "ativo = passivo + patrimônio líquido" valham com igualdade exata. Cada lançamento registra origem, destino e classe do fluxo de caixa (operacional, investimento, financiamento).
 
 ### 6.13 Módulo Finanças (camada 2)
 
@@ -375,7 +379,7 @@ O painel do professor é o **grande diferencial** em relação ao jogo original.
 
 | Controle | Descrição |
 |---|---|
-| **Velocidade** | Segundos reais por tick (ex.: 1 s = 1 dia de jogo → 1 ano ≈ 6 min). Padrão sugerido para iniciantes: 1 mês de jogo a cada 30–60 s |
+| **Velocidade** | Segundos reais por tick (ex.: 1 s = 1 dia de jogo → 1 ano ≈ 6 min). Padrão sugerido: 1 mês de jogo a cada 60–120 s, o que leva uma **partida típica de 24 meses** a 25–50 min de relógio rodando |
 | **Pausar / retomar** | Congela o jogo para explicar um conceito com os gráficos na tela |
 | **Modo contínuo** | O relógio anda sozinho na velocidade escolhida |
 | **Modo rodada** | O jogo pausa automaticamente ao fim de cada mês; retoma quando o professor clica em "avançar" ou quando todas as equipes confirmam as decisões (configurável) |
@@ -519,17 +523,22 @@ O modo C não é prioridade (roadmap, fase 5), mas o código deve nascer compat�
 
 ### 9.3 Organização sugerida do repositório (monorepo)
 
+Nomes de pastas, arquivos e identificadores em português (decisão 2).
+
 ```
-/packages/engine      motor puro (TS), sem dependências de runtime; testes unitários
-/packages/shared      tipos, esquemas de validação das decisões e mensagens, presets de parâmetros
-/packages/catalog     catálogo de produtos, receitas, culturas e recursos (dados versionados)
-/apps/web             frontend (tela inicial, aluno, professor, telão)
-/apps/server          servidor Bun: HTTP, WebSocket, relógio, descoberta UDP, SQLite, autenticação
-/apps/server/migrations   migrações do esquema SQLite (aplicadas na inicialização)
-/tools/balance        CLI de balanceamento e relatórios
-/tools/loadtest       clientes simulados para teste de carga (ex.: 60 alunos)
-/docs                 documentação, incluindo o guia para a TI
+/pacotes/motor                motor puro (TS), sem dependências de runtime, e robôs; testes unitários
+/pacotes/compartilhado        esquemas das mensagens do WebSocket e tipos comuns a servidor e telas (fase 1)
+/pacotes/catalogo             catálogo de produtos, receitas, culturas e recursos; presets (dados versionados)
+/apps/web                     frontend (tela inicial, aluno, professor, telão)
+/apps/servidor                servidor Bun: HTTP, WebSocket, relógio, descoberta UDP, SQLite, autenticação
+/apps/servidor/migracoes      migrações do esquema SQLite (aplicadas na inicialização)
+/ferramentas/balanceamento    CLI de balanceamento e relatórios
+/ferramentas/teste-de-carga   clientes simulados para teste de carga (ex.: 60 alunos)
+/tools/poc-rede               PoC de rede (seção 9.9), mantida como estava
+/docs                         documentação, incluindo o guia para a TI
 ```
+
+Cada pacote tem o código em `src/` e os testes em `testes/`. O `tsconfig` do `src/` do motor não carrega tipos de runtime (`types: []`), e um teste lê o código-fonte e falha se encontrar `Math.random`, `Date`, `Bun`, `process`, imports externos ou funções transcendentais fora de `matematica.ts`.
 
 ### 9.4 Descoberta de sala na rede
 
@@ -598,7 +607,7 @@ Detalhes:
 ### 9.8 Regras importantes
 
 - **O servidor valida todas as decisões** (limites, caixa, módulos ativos, teto de preço). O frontend nunca é confiável.
-- **Mensagens do WebSocket com esquema validado** (em `/packages/shared`) e versionado; cliente e servidor recusam versões incompatíveis. Como as telas vêm do servidor da sala, cliente e servidor normalmente têm a mesma versão.
+- **Mensagens do WebSocket com esquema validado** (em `/pacotes/compartilhado`) e versionado; cliente e servidor recusam versões incompatíveis. Como as telas vêm do servidor da sala, cliente e servidor normalmente têm a mesma versão.
 - **Atualizações enxutas:** enviar só o que mudou (ou o resumo da equipe e do mercado), para 50+ clientes a cada tick sem sobrecarga.
 - **Impedir a suspensão** do computador host enquanto a sala está rodando, se possível sem privilégios (API do Windows via `bun:ffi`); desejável no modo A, não obrigatório. No modo B, a máquina servidora já fica permanentemente ligada.
 - O Claude Code desenvolve e testa tudo localmente, sem contas externas. Antes do piloto, rodar o **teste de carga** com clientes simulados.
@@ -691,7 +700,7 @@ Relatórios de origem: `relatorio-professor-CAS0728899W11-1-20260929-*` e `relat
    - *Aleatória* — decisões ao acaso, dentro de limites
    - *Integrada* (camada 3) — controla a cadeia da matéria-prima ao varejo
    - *Fornecedora* (camada 3) — especializa-se em matéria-prima ou semiacabado e vende no atacado
-3. **CLI de balanceamento:** roda N partidas (ex.: 500 sementes) com combinações de robôs e gera um relatório (Markdown + CSV).
+3. **CLI de balanceamento:** roda N partidas (ex.: 500 sementes) com combinações de robôs e gera um relatório (Markdown + CSV). Horizonte padrão: **24 meses** (partida típica), com checagem também no mês 4. Cada semente sorteia o cenário dentro de faixas declaradas no preset (população, preço de referência, pesos da nota, preço e qualidade do fornecedor) e a intensidade de cada robô; sem essa variação, as sementes gerariam partidas quase iguais. Vitória = maior pontuação (lucro acumulado) no mercado, com empate decidido pelo id da empresa.
 4. **Métricas de aceite** (valores iniciais a discutir):
    - nenhuma estratégia vence mais de ~40% das partidas em confronto equilibrado;
    - toda estratégia "razoável" vence pelo menos ~10%;
@@ -764,7 +773,7 @@ Relatórios de origem: `relatorio-professor-CAS0728899W11-1-20260929-*` e `relat
 
 ## 13. Capacidade e requisitos
 
-**Estimativa por aula** (50 alunos + professor, 2 mercados × 6 equipes, 5 produtos, ~60 min de relógio rodando a ~1,5 s por tick ≈ 2.400 ticks):
+**Estimativa por aula** (50 alunos + professor, 2 mercados × 6 equipes, 5 produtos, partida típica de 24 meses = 720 ticks, ~40 min de relógio rodando a ~3,3 s por tick):
 
 | Recurso | Estimativa | Avaliação |
 |---|---|---|
@@ -783,7 +792,7 @@ Relatórios de origem: `relatorio-professor-CAS0728899W11-1-20260929-*` e `relat
 **Cuidados:**
 - O limite de jogabilidade (4 a 8 equipes por mercado, seção 2) é bem mais restritivo que o técnico.
 - O processamento de um tick deve ser rápido (meta: < 300 ms para 2 mercados × 8 empresas × 5 produtos) para não atrasar o relógio. Com a camada 3 e recortes maiores da árvore, medir de novo; se necessário, processar a produção diariamente e o atacado semanalmente.
-- Validar com o teste de carga (`/tools/loadtest`) antes do piloto.
+- Validar com o teste de carga (`/ferramentas/teste-de-carga`) antes do piloto.
 
 ---
 
