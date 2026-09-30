@@ -5,7 +5,8 @@
  */
 import { ESTRATEGIAS, type Intensidade } from "@simulador/motor";
 import { calcularMetricas, LIMITES, porcentagem as pct } from "./metricas";
-import { executarEmParalelo } from "./paralelo";
+import { executarLote } from "./execucao";
+import { PoolDeTrabalhadores } from "./paralelo";
 
 export type Grade = Record<string, readonly number[]>;
 
@@ -61,19 +62,22 @@ export async function buscarMelhorResposta(opcoes: {
   const grade = opcoes.grade ?? gradePadrao(opcoes.estrategia);
   const pontos: PontoDaGrade[] = [];
   const todas = combinacoes(grade);
-  for (const [k, intensidade] of todas.entries()) {
-    const resultados = await executarEmParalelo(
-      { presetId: opcoes.presetId, confronto: "todos", prefixo: opcoes.prefixo, meses: opcoes.meses, intensidadeFixa: { estrategia: opcoes.estrategia, intensidade } },
-      opcoes.partidas,
-      opcoes.trabalhadores,
-    );
-    const m = calcularMetricas(resultados).porEstrategia.find((x) => x.estrategia === opcoes.estrategia)!;
-    const naBorda = Object.entries(intensidade).some(([nome, v]) => {
-      const valores = grade[nome]!;
-      return v === Math.min(...valores) || v === Math.max(...valores);
-    });
-    pontos.push({ intensidade, taxaVitoria: m.taxaVitoria, posicaoMedia: m.posicaoMedia, lucroMedio: m.lucroMedio, naBorda });
-    opcoes.aoProgredir?.(k + 1, todas.length);
+  // Um pool só para a grade inteira: os mesmos workers atendem todos os pontos.
+  const pool = opcoes.trabalhadores > 1 && opcoes.partidas > 1 ? new PoolDeTrabalhadores(Math.min(opcoes.trabalhadores, opcoes.partidas)) : null;
+  try {
+    for (const [k, intensidade] of todas.entries()) {
+      const base = { presetId: opcoes.presetId, confronto: "todos" as const, prefixo: opcoes.prefixo, meses: opcoes.meses, intensidadeFixa: { estrategia: opcoes.estrategia, intensidade } };
+      const resultados = pool ? await pool.executar(base, opcoes.partidas) : executarLote({ ...base, indices: Array.from({ length: opcoes.partidas }, (_, i) => i) });
+      const m = calcularMetricas(resultados).porEstrategia.find((x) => x.estrategia === opcoes.estrategia)!;
+      const naBorda = Object.entries(intensidade).some(([nome, v]) => {
+        const valores = grade[nome]!;
+        return v === Math.min(...valores) || v === Math.max(...valores);
+      });
+      pontos.push({ intensidade, taxaVitoria: m.taxaVitoria, posicaoMedia: m.posicaoMedia, lucroMedio: m.lucroMedio, naBorda });
+      opcoes.aoProgredir?.(k + 1, todas.length);
+    }
+  } finally {
+    pool?.encerrar();
   }
   const melhor = [...pontos].sort((a, b) => b.taxaVitoria - a.taxaVitoria || a.posicaoMedia - b.posicaoMedia)[0]!;
   return { estrategia: opcoes.estrategia, grade, pontos, melhor, alerta: melhor.naBorda && melhor.taxaVitoria > LIMITES.vitoriaMaxima };

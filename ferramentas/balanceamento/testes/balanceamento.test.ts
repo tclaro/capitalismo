@@ -5,7 +5,7 @@ import { robosDoConfronto, sementeDaPartida } from "../src/confronto";
 import { executarLote } from "../src/execucao";
 import { combinacoes, gradePadrao } from "../src/melhorResposta";
 import { calcularMetricas, LIMITES, porcentagem } from "../src/metricas";
-import { executarEmParalelo } from "../src/paralelo";
+import { executarEmParalelo, PoolDeTrabalhadores } from "../src/paralelo";
 import { relatorioCsv, relatorioMarkdown } from "../src/relatorio";
 
 describe("confrontos", () => {
@@ -199,6 +199,18 @@ describe("execução", () => {
     const sequencial = executarLote({ ...base, indices: [0, 1, 2] });
     const paralelo = await executarEmParalelo(base, 3, 2);
     expect(paralelo).toEqual(sequencial);
+  }, 60_000);
+
+  test("pool reaproveitado em várias rodadas dá os mesmos resultados da execução sequencial", async () => {
+    const pool = new PoolDeTrabalhadores(2);
+    try {
+      for (const confronto of ["todos", "subconjuntos"] as const) {
+        const base = { presetId: "introdutorio/padrao", confronto, prefixo: "pool", meses: 1 };
+        expect(await pool.executar(base, 3)).toEqual(executarLote({ ...base, indices: [0, 1, 2] }));
+      }
+    } finally {
+      pool.encerrar();
+    }
   }, 60_000);
 
   test("preset desconhecido é rejeitado", () => {
