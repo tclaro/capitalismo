@@ -15,17 +15,23 @@
  */
 import type { Server, ServerWebSocket } from "bun";
 import {
+  type AlunoEntrou,
   CodigoSala,
   ConfigSala,
   CriarSala,
   EntrarAluno,
   EntrarProfessor,
+  type InfoPublicaSala,
+  type InfoServidor,
+  type ListaDoAdmin,
   MENSAGENS_DO_ALUNO,
   MENSAGENS_DO_PROFESSOR,
   MensagemCliente,
   type MensagemServidor,
   PALETA_EQUIPES,
   type Papel,
+  type SalaCriada,
+  type SessaoNaSala,
   VERSAO_PROTOCOLO,
   validar,
 } from "@simulador/compartilhado";
@@ -237,7 +243,7 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
     if (caminho === "/ws" && metodo === "GET") return upgrade(req, url);
 
     if (caminho === "/api/servidor" && metodo === "GET") {
-      return json({ versao: opcoes.versao ?? "dev", protocolo: VERSAO_PROTOCOLO, porta: server.port, enderecos: enderecos(), chaveDefinida: acessos.chaveDefinida(), estrategiasDeRobo: ESTRATEGIAS_RAZOAVEIS });
+      return json({ versao: opcoes.versao ?? "dev", protocolo: VERSAO_PROTOCOLO, porta: server.port ?? 0, enderecos: enderecos(), chaveDefinida: acessos.chaveDefinida(), estrategiasDeRobo: ESTRATEGIAS_RAZOAVEIS } satisfies InfoServidor);
     }
 
     // Criar sala (professor, com a chave compartilhada).
@@ -260,7 +266,7 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
         throw e;
       }
       const { sala, pin } = criada;
-      return json({ ok: true, codigo: sala.codigo, pin, linkTelao: linkTelao(sala), enderecos: enderecos() }, 201, { "Set-Cookie": novaSessao(sala, "professor", null) });
+      return json({ ok: true, codigo: sala.codigo, pin, linkTelao: linkTelao(sala), enderecos: enderecos() } satisfies SalaCriada, 201, { "Set-Cookie": novaSessao(sala, "professor", null) });
     }
 
     // Reabrir como professor (código + PIN).
@@ -301,7 +307,7 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
         limites.registrarFalha(`entrada:ip:${ip}`, REGRAS.entrada);
         return erro(409, r.motivo);
       }
-      return json({ ok: true, codigo: sala.codigo, membro: r.membro.id, nome: r.membro.nome, empresa: r.membro.empresa }, 200, {
+      return json({ ok: true, codigo: sala.codigo, membro: r.membro.id, nome: r.membro.nome, empresa: r.membro.empresa } satisfies AlunoEntrou, 200, {
         "Set-Cookie": novaSessao(sala, "aluno", r.membro.id),
       });
     }
@@ -331,14 +337,14 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
   async function rotearSala(req: Request, url: URL, sala: Sala, resto: string, metodo: string): Promise<Response> {
     // Informação pública para a tela de entrada: equipes formadas, vagas livres e cores.
     if (resto === "" && metodo === "GET") {
-      return json({ sala: infoDe(sala), relogio: relogioDe(sala), vagas: vagasPublicas(sala), cores: PALETA_EQUIPES });
+      return json({ sala: infoDe(sala), relogio: relogioDe(sala), vagas: vagasPublicas(sala), cores: PALETA_EQUIPES } satisfies InfoPublicaSala);
     }
 
     // Quem sou eu nesta sala (a interface usa para decidir a tela).
     if (resto === "/sessao" && metodo === "GET") {
       const aluno = sessaoDe(req, sala, "aluno");
       const membro = aluno ? sala.membro(aluno.membro!)! : null;
-      return json({ professor: sessaoDe(req, sala, "professor") !== null, aluno: membro ? { membro: membro.id, nome: membro.nome, empresa: membro.empresa } : null });
+      return json({ professor: sessaoDe(req, sala, "professor") !== null, aluno: membro ? { membro: membro.id, nome: membro.nome, empresa: membro.empresa } : null } satisfies SessaoNaSala);
     }
 
     if (resto === "/sair" && metodo === "POST") {
@@ -363,6 +369,12 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
     }
 
     // Ações do professor por HTTP (as que devolvem segredo, que não vai pelo pub/sub).
+    // O telão confere o próprio link (no navegador, o 401 do upgrade aparece só como queda).
+    if (resto === "/telao" && metodo === "GET") {
+      const valido = acessos.conferirTelao(sala.id, url.searchParams.get("t") ?? "");
+      return valido ? json({ ok: true }) : erro(401, "link do telão inválido ou revogado");
+    }
+
     if (resto === "/pin" && metodo === "POST") {
       if (!sessaoDe(req, sala, "professor")) return erro(401, "só o professor da sala");
       return json({ ok: true, pin: await acessos.novoPin(sala.id) });
@@ -385,7 +397,7 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
         ok: true,
         chaveDefinida: acessos.chaveDefinida(),
         salas: gerente.todas().map((s) => ({ id: s.id, codigo: s.codigo, status: s.status, tick: s.estado.tick, presetId: s.config.presetId, membros: s.membros.length, conexoes: conexoes.get(s.id)?.size ?? 0 })),
-      });
+      } satisfies ListaDoAdmin);
     }
     if (caminho === "/api/admin/chave" && metodo === "POST") {
       const corpo = (await lerJson(req)) as { chave?: unknown };

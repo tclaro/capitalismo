@@ -547,6 +547,7 @@ Nomes de pastas, arquivos e identificadores em português (decisão 2).
 /apps/web                     frontend (tela inicial, aluno, professor, telão)
 /apps/servidor                servidor Bun: HTTP, WebSocket, relógio, descoberta UDP, SQLite, autenticação
 /apps/servidor/src/dados      SQLite: migrações embutidas (migracoes/*.sql), repositório, acessos
+/apps/servidor/scripts        empacotar.ts (build da interface → manifesto → .exe) e fumaca.ts (teste do .exe)
 /ferramentas/balanceamento    CLI de balanceamento e relatórios
 /ferramentas/teste-de-carga   clientes simulados para teste de carga (ex.: 60 alunos)
 /tools/poc-rede               PoC de rede (seção 9.9), mantida como estava

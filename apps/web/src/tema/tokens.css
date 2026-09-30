@@ -1,0 +1,113 @@
+/*
+ * Tokens de design (seção 8.1): a identidade visual inteira sai daqui, e as telas usam só estas
+ * variáveis. Cores semânticas (lucro, prejuízo, alerta) ficam separadas da paleta categórica das
+ * equipes (pacotes/compartilhado/src/equipes.ts).
+ *
+ * Tema: claro por padrão; escuro por preferência do sistema ou por escolha (atributo data-tema no
+ * <html>). Contraste WCAG AA conferido em testes/tema.test.ts.
+ */
+
+:root {
+  /* Tipografia */
+  --fonte: "Inter Variable", "Segoe UI", system-ui, sans-serif;
+  --fonte-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --texto-pp: 0.75rem;
+  --texto-p: 0.875rem;
+  --texto-m: 1rem;
+  --texto-g: 1.25rem;
+  --texto-gg: 1.75rem;
+  --texto-telao: 2.5rem;
+  --peso-normal: 400;
+  --peso-medio: 550;
+  --peso-forte: 700;
+  --altura-linha: 1.45;
+
+  /* Espaçamentos (escala de 4 px) */
+  --esp-1: 0.25rem;
+  --esp-2: 0.5rem;
+  --esp-3: 0.75rem;
+  --esp-4: 1rem;
+  --esp-5: 1.5rem;
+  --esp-6: 2rem;
+  --esp-7: 3rem;
+
+  /* Raios e sombras */
+  --raio-1: 4px;
+  --raio-2: 8px;
+  --raio-3: 12px;
+  --raio-total: 999px;
+  --sombra-1: 0 1px 2px rgb(0 0 0 / 0.08);
+  --sombra-2: 0 4px 12px rgb(0 0 0 / 0.12);
+
+  /* Movimento: transições curtas; nada pisca */
+  --transicao: 160ms ease-out;
+
+  /* Cores do tema claro */
+  --cor-fundo: #f5f6f8;
+  --cor-superficie: #ffffff;
+  --cor-superficie-2: #eceff3;
+  --cor-borda: #c9ced6;
+  --cor-texto: #1a1d23;
+  --cor-texto-2: #4a5160;
+  --cor-primaria: #1f5fbf;
+  --cor-primaria-hover: #194f9f;
+  --cor-texto-na-primaria: #ffffff;
+  --cor-foco: #1f5fbf;
+  --cor-lucro: #1a7a47;
+  --cor-prejuizo: #b3261e;
+  --cor-alerta: #8a5d00;
+  --cor-neutro: #596170;
+  --cor-fundo-lucro: #e3f4ea;
+  --cor-fundo-prejuizo: #fbe7e5;
+  --cor-fundo-alerta: #fbf0d6;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --cor-fundo: #111418;
+    --cor-superficie: #1a1e24;
+    --cor-superficie-2: #242a32;
+    --cor-borda: #3a424d;
+    --cor-texto: #e8eaee;
+    --cor-texto-2: #aab1bd;
+    --cor-primaria: #7fb0ff;
+    --cor-primaria-hover: #a3c6ff;
+    --cor-texto-na-primaria: #0b1a33;
+    --cor-foco: #7fb0ff;
+    --cor-lucro: #5fd394;
+    --cor-prejuizo: #ff8a80;
+    --cor-alerta: #f2c14e;
+    --cor-neutro: #9aa3b0;
+    --cor-fundo-lucro: #16301f;
+    --cor-fundo-prejuizo: #3a1a18;
+    --cor-fundo-alerta: #362a0f;
+    --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --sombra-2: 0 4px 12px rgb(0 0 0 / 0.5);
+    color-scheme: dark;
+  }
+}
+
+:root[data-tema="escuro"] {
+  --cor-fundo: #111418;
+  --cor-superficie: #1a1e24;
+  --cor-superficie-2: #242a32;
+  --cor-borda: #3a424d;
+  --cor-texto: #e8eaee;
+  --cor-texto-2: #aab1bd;
+  --cor-primaria: #7fb0ff;
+  --cor-primaria-hover: #a3c6ff;
+  --cor-texto-na-primaria: #0b1a33;
+  --cor-foco: #7fb0ff;
+  --cor-lucro: #5fd394;
+  --cor-prejuizo: #ff8a80;
+  --cor-alerta: #f2c14e;
+  --cor-neutro: #9aa3b0;
+  --cor-fundo-lucro: #16301f;
+  --cor-fundo-prejuizo: #3a1a18;
+  --cor-fundo-alerta: #362a0f;
+  --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --sombra-2: 0 4px 12px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
+}

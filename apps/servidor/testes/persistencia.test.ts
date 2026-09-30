@@ -3,8 +3,8 @@
  * falha, replay, histórico, backup e queda real do processo.
  */
 import { afterAll, describe, expect, test } from "bun:test";
-import type { Database } from "bun:sqlite";
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { Database } from "bun:sqlite";
+import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { passo } from "@simulador/motor";
@@ -193,10 +193,13 @@ describe("queda real do processo", () => {
     const caminho = join(pastaTemporaria(), "queda.db");
     const script = join(import.meta.dir, "processo", "sala-viva.ts");
     const proc = Bun.spawn(["bun", script, "rodar", caminho], { stdout: "pipe", stderr: "pipe" });
+    // Leitura só de leitura e sem migrar: o processo filho é quem cria o banco (dois processos
+    // migrando o mesmo arquivo ao mesmo tempo derrubavam o filho).
     const ler = (): number => {
+      if (!existsSync(caminho)) return 0;
       let db: Database | null = null;
       try {
-        db = abrirBanco(caminho, { backup: false });
+        db = new Database(caminho, { readonly: true });
         return (db.query("SELECT tick FROM estado_atual").get() as { tick: number } | null)?.tick ?? 0;
       } catch {
         return 0;
@@ -209,7 +212,7 @@ describe("queda real do processo", () => {
     proc.kill(9);
     await proc.exited;
     const gravado = ler();
-    expect(gravado).toBeGreaterThanOrEqual(25);
+    if (gravado < 25) throw new Error(`o processo não avançou (tick ${gravado}). stderr:\n${await new Response(proc.stderr).text()}`);
 
     const verif = Bun.spawn(["bun", script, "verificar", caminho], { stdout: "pipe", stderr: "pipe" });
     const saida = await new Response(verif.stdout).text();

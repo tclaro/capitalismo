@@ -171,7 +171,9 @@ describe("código da sala e utilitários", () => {
   });
 
   test("argumentos da CLI", () => {
-    expect(lerArgumentos([])).toEqual({ porta: 47800, dados: null, host: "0.0.0.0", dev: false, definirChave: null });
+    expect(lerArgumentos([])).toEqual({ porta: 47800, dados: null, host: "0.0.0.0", web: null, dev: false, definirChave: null });
+    expect(lerArgumentos(["--web", "apps/web/dist"]).web).toBe("apps/web/dist");
+    expect(() => lerArgumentos(["--web"])).toThrow();
     expect(lerArgumentos(["--porta", "0", "--dados", "D:\\x", "--dev", "--host", "127.0.0.1"])).toMatchObject({ porta: 0, dados: "D:\\x", dev: true, host: "127.0.0.1" });
     expect(lerArgumentos(["--definir-chave"]).definirChave).toBe(true);
     expect(lerArgumentos(["--definir-chave", "segredo123", "--dev"])).toMatchObject({ definirChave: "segredo123", dev: true });

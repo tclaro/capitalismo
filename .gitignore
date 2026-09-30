@@ -4,3 +4,7 @@ dist/
 relatorios-poc-rede/
 # saídas da CLI de balanceamento (relatórios aprovados vão para docs/balanceamento/)
 ferramentas/balanceamento/saida/
+# build do empacotamento (manifesto gerado)
+apps/servidor/build/
+apps/servidor/.bun-cache/
+dados-dev/

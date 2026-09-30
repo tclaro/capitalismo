@@ -1,0 +1,226 @@
+/* Estilos base e componentes reutilizáveis. Só usam tokens (tokens.css). */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--fonte);
+  font-size: var(--texto-m);
+  line-height: var(--altura-linha);
+  color: var(--cor-texto);
+  background: var(--cor-fundo);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+#raiz {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 var(--esp-3);
+  line-height: 1.2;
+}
+h1 {
+  font-size: var(--texto-gg);
+}
+h2 {
+  font-size: var(--texto-g);
+}
+h3 {
+  font-size: var(--texto-m);
+}
+p {
+  margin: 0 0 var(--esp-3);
+}
+
+a {
+  color: var(--cor-primaria);
+}
+
+:focus-visible {
+  outline: 3px solid var(--cor-foco);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Estrutura da página */
+.cabecalho {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-3);
+  padding: var(--esp-3) var(--esp-5);
+  background: var(--cor-superficie);
+  border-bottom: 1px solid var(--cor-borda);
+}
+.cabecalho .marca {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  font-weight: var(--peso-forte);
+  color: var(--cor-texto);
+  text-decoration: none;
+}
+.cabecalho .espaco {
+  flex: 1;
+}
+.conteudo {
+  flex: 1;
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: var(--esp-5);
+}
+.conteudo.estreito {
+  max-width: 28rem;
+}
+
+.cartao {
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-3);
+  box-shadow: var(--sombra-1);
+  padding: var(--esp-5);
+}
+
+.pilha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-4);
+}
+.linha {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-3);
+  flex-wrap: wrap;
+}
+
+.texto-2 {
+  color: var(--cor-texto-2);
+}
+.pequeno {
+  font-size: var(--texto-p);
+}
+
+/* Botões */
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--esp-2);
+  min-height: 2.5rem;
+  padding: 0 var(--esp-4);
+  font: inherit;
+  font-weight: var(--peso-medio);
+  color: var(--cor-texto);
+  background: var(--cor-superficie-2);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-2);
+  cursor: pointer;
+  transition: background var(--transicao);
+}
+.botao:hover {
+  background: var(--cor-borda);
+}
+.botao.primario {
+  color: var(--cor-texto-na-primaria);
+  background: var(--cor-primaria);
+  border-color: var(--cor-primaria);
+}
+.botao.primario:hover {
+  background: var(--cor-primaria-hover);
+}
+.botao:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Campos */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-1);
+}
+.campo label {
+  font-size: var(--texto-p);
+  font-weight: var(--peso-medio);
+}
+.campo input,
+.campo select {
+  min-height: 2.5rem;
+  padding: 0 var(--esp-3);
+  font: inherit;
+  color: var(--cor-texto);
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-2);
+}
+.campo .erro {
+  color: var(--cor-prejuizo);
+  font-size: var(--texto-p);
+}
+
+/* Mensagens */
+.aviso {
+  display: flex;
+  gap: var(--esp-2);
+  align-items: flex-start;
+  padding: var(--esp-3) var(--esp-4);
+  border-radius: var(--raio-2);
+  border: 1px solid currentColor;
+}
+.aviso.erro {
+  color: var(--cor-prejuizo);
+  background: var(--cor-fundo-prejuizo);
+}
+.aviso.alerta {
+  color: var(--cor-alerta);
+  background: var(--cor-fundo-alerta);
+}
+.aviso.sucesso {
+  color: var(--cor-lucro);
+  background: var(--cor-fundo-lucro);
+}
+
+/* Indicador de conexão: ícone + texto, nunca só cor */
+.conexao {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--esp-1);
+  font-size: var(--texto-p);
+  color: var(--cor-texto-2);
+}
+.conexao.aberta {
+  color: var(--cor-lucro);
+}
+.conexao.reconectando {
+  color: var(--cor-alerta);
+}
+.conexao.encerrada {
+  color: var(--cor-prejuizo);
+}
+
+.codigo-sala {
+  font-family: var(--fonte-mono);
+  font-weight: var(--peso-forte);
+  letter-spacing: 0.15em;
+}

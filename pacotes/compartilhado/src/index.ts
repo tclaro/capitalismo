@@ -6,3 +6,4 @@ export * from "./dinheiro";
 export * from "./equipes";
 export * from "./protocolo";
 export * from "./visoes";
+export * from "./respostas";

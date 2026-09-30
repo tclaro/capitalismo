@@ -186,7 +186,7 @@ describe("permissões (seção 9.6)", () => {
       ["anônimo como aluno", anonimo, { codigo: s.codigo, papel: "aluno" }, false],
       ["anônimo como professor", anonimo, { codigo: s.codigo, papel: "professor" }, false],
       ["anônimo como telão sem token", anonimo, { codigo: s.codigo, papel: "telao" }, false],
-      ["anônimo como telão com token errado", anonimo, { codigo: s.codigo, papel: "telao", t: s.tokenTelao.slice(0, -1) + "A" }, false],
+      ["anônimo como telão com token errado", anonimo, { codigo: s.codigo, papel: "telao", t: s.tokenTelao.slice(0, -1) + (s.tokenTelao.endsWith("A") ? "B" : "A") }, false],
       ["anônimo como telão com o token", anonimo, { codigo: s.codigo, papel: "telao", t: s.tokenTelao }, true],
       ["telão com o token de outra sala", anonimo, { codigo: codigo2, papel: "telao", t: s.tokenTelao }, false],
       ["aluno como aluno", s.ana.nav, { codigo: s.codigo, papel: "aluno" }, true],
@@ -263,7 +263,9 @@ describe("permissões (seção 9.6)", () => {
     expect(r.status).toBe(200);
     expect((await telao.fechado).codigo).toBe(4003);
     expect(await amb.navegador().conectar({ codigo: s.codigo, papel: "telao", t: s.tokenTelao })).toBe("recusado");
+    expect((await amb.navegador().pedir(`/api/salas/${s.codigo}/telao?t=${s.tokenTelao}`)).status).toBe(401);
     const novo = new URL(r.corpo.linkTelao, amb.base).searchParams.get("t")!;
+    expect((await amb.navegador().pedir(`/api/salas/${s.codigo}/telao?t=${novo}`)).status).toBe(200);
     const t2 = await amb.navegador().ws({ codigo: s.codigo, papel: "telao", t: novo });
     await t2.esperar((m) => m.tipo === "snapshot");
   });
