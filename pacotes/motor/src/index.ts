@@ -8,3 +8,5 @@
 
 /** Versão do motor. Um replay só é garantido na mesma versão. */
 export const VERSAO_MOTOR = "0.0.0";
+
+export * from "./preset";
