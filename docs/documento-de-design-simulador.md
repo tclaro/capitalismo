@@ -2,7 +2,7 @@
 
 > **Nome provisório:** Simulador de Mercado (inspirado em *Capitalism*, Enlight Software, 1995)
 > **Autor:** Thiago Claro — Fractal Data
-> **Versão:** 0.7 — setembro de 2026 (decisões para a fase 0: pastas em português, partida típica de 24 meses, make or buy coexistindo, crédito emergencial com amortização automática, IR com compensação de prejuízo). Versão 0.6: resultado da PoC de rede e modo B adotado
+> **Versão:** 0.8 — setembro de 2026 (calibração da fase 0: difusão tecnológica e curva de aprendizado da fábrica no modelo; critério de referência da Revenda na camada 1). Versão 0.7: pastas em português, partida típica de 24 meses, make or buy coexistindo, crédito emergencial com amortização automática, IR com compensação de prejuízo. Versão 0.6: resultado da PoC de rede e modo B adotado
 > **Status:** visão e requisitos aprovados; plano de implementação a ser produzido
 > **Anexo:** `docs/arvore-de-produtos.md` — lista completa de produtos, cadeias e calendário agrícola
 
@@ -242,6 +242,14 @@ T_i' = T_i + taxa_T × (1 − exp(−verba_PD / PD_ref))
 - A qualidade **se propaga pela cadeia**: um aço de qualidade alta melhora o motor, que melhora o carro. Isso ensina por que controlar a cadeia (ou escolher bem o fornecedor) importa.
 
 - `T_max` = maior tecnologia entre as empresas do mercado para aquele produto (no mínimo `T_base`, para não dividir por zero).
+- **Difusão tecnológica** (acrescentada na calibração da fase 0): a cada mês, cada empresa fecha uma fração `difusao_tecnologica` da distância até `T_max`, por imitação:
+
+  ```
+  T_i' = T_i + difusao_tick × (T_max − T_i)
+  ```
+
+  Sem ela, a tecnologia acumula sem limite e a vantagem da líder só cresce: quem fabrica sem P&D acaba com qualidade **abaixo** do produto comprado pronto, e a estratégia de P&D intenso vence quase sempre. Com a difusão, a liderança em P&D continua valendo, mas se dissipa sem investimento contínuo. 0 desliga o mecanismo.
+- **Curva de aprendizado da fábrica** (acrescentada na calibração da fase 0; manual do Capitalism II: "a produtividade e a capacidade de uma unidade de fabricação aumentam quando o nível da unidade aumenta"). Cada fábrica acumula **experiência**, medida em meses de produção à capacidade nominal. Os níveis são definidos no preset por limiares de experiência, e cada nível tem multiplicadores de **capacidade** e de **custo de mão de obra** por unidade. Uma fábrica nova começa lenta e cara e melhora com o volume produzido; fábrica parada não aprende. Com várias fábricas do mesmo produto, a produção é dividida pela capacidade, e cada uma paga a mão de obra do seu nível. Ensina curva de aprendizado e economia de escala; torna a decisão de fabricar um investimento com período de maturação, e não uma vantagem imediata.
 - P&D **só afeta produtos fabricados**. Isso cria o trade-off central do make or buy: comprar pronto é rápido e barato no início; fabricar exige investimento, mas dá controle sobre custo e qualidade. Verba de P&D gasta antes de a fábrica ficar pronta acumula tecnologia para quando ela começar a produzir.
 
 **Comprar pronto e fabricar podem coexistir** no mesmo produto (decidido em 29/09/2026): a equipe revende enquanto a fábrica está em obra ou completa o estoque quando falta capacidade. O estoque guarda valor total e quantidade, então custo e qualidade do produto vendido são médias ponderadas dos lotes; os relatórios mostram a origem de cada lote.
@@ -703,11 +711,17 @@ Relatórios de origem: `relatorio-professor-CAS0728899W11-1-20260929-*` e `relat
 3. **CLI de balanceamento:** roda N partidas (ex.: 500 sementes) com combinações de robôs e gera um relatório (Markdown + CSV). Horizonte padrão: **24 meses** (partida típica), com checagem também no mês 4. Cada semente sorteia o cenário dentro de faixas declaradas no preset (população, preço de referência, pesos da nota, preço e qualidade do fornecedor) e a intensidade de cada robô; sem essa variação, as sementes gerariam partidas quase iguais. Vitória = maior pontuação (lucro acumulado) no mercado, com empate decidido pelo id da empresa.
 4. **Métricas de aceite** (valores iniciais a discutir):
    - nenhuma estratégia vence mais de ~40% das partidas em confronto equilibrado;
-   - toda estratégia "razoável" vence pelo menos ~10%;
+   - toda estratégia "razoável" vence pelo menos ~10%. **Exceção na camada 1 (decidido em 29/09/2026): a *Revenda*.** Sem atacado entre equipes, ela é logicamente dominada: é o *Preço baixo* sem a opção de fabricar, e nenhuma combinação de parâmetros a faz vencer (324 combinações testadas, inclusive partidas de 6 meses). Na camada 1 ela é estratégia de referência, com critério próprio: lucro médio acima da *Passiva* e pelo menos tantas vitórias quanto ela. Revender fica como caminho seguro, mas que não leva à liderança. Na camada 3, comprando do melhor fabricante e investindo em marca, como a marca própria do Capitalism II, a *Revenda* volta ao critério comum;
    - a *Passiva* e a *Aleatória* quase nunca vencem (decidir bem precisa importar);
    - as diferenças entre empresas ficam visíveis em até 3–4 meses de jogo;
    - poucas empresas com caixa negativo prolongado com parâmetros padrão;
    - **teste de melhor resposta:** otimizar um robô por busca em grade contra os demais; se uma decisão extrema e trivial (ex.: preço mínimo sempre) vencer, rebalancear.
+
+   **Confrontos da CLI** (`bun run balancear`, definidos na fase 0):
+   - *todos* (confronto equilibrado: as 7 estratégias, uma empresa cada): **entra na aprovação**;
+   - *extremo* (as 7 mais a estratégia degenerada "preço mínimo" = custo, sem publicidade nem P&D): **entra na aprovação**; o preço mínimo não pode vencer mais de 15%;
+   - *subconjuntos* (4 ou 5 estratégias sorteadas): **só diagnóstico**. Com poucos concorrentes de verdade, a taxa "justa" de vitória já passa de 30%, e o limite de 40% não se aplica;
+   - *melhor resposta* (busca em grade da intensidade de uma estratégia): alerta se a melhor intensidade estiver na borda da grade e vencer mais de 40%.
 5. **Robôs reaproveitados** como concorrentes dentro do jogo (turmas pequenas).
 6. **Pré-visualização para o professor:** botão "simular partida com robôs" para ver como um preset se comporta antes da aula.
 

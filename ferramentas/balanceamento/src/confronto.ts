@@ -7,6 +7,14 @@ export type TipoConfronto = "todos" | "subconjuntos" | "extremo";
 
 export const TIPOS_CONFRONTO: readonly TipoConfronto[] = ["todos", "subconjuntos", "extremo"];
 
+/**
+ * Confrontos que entram na aprovação. Os critérios da seção 10.4 são definidos para o confronto
+ * equilibrado (todas as estratégias no mercado) e o teste de melhor resposta (extremo). Em
+ * subconjuntos de 4–5 empresas, a taxa "justa" de vitória já passa de 20–30%, e o limite de 40%
+ * perde o sentido: o relatório é diagnóstico.
+ */
+export const CONFRONTOS_DE_APROVACAO: readonly TipoConfronto[] = ["todos", "extremo"];
+
 /** Semente da i-ésima partida (0-based) de uma execução. */
 export function sementeDaPartida(prefixo: string, i: number): string {
   return `${prefixo}-${String(i + 1).padStart(4, "0")}`;

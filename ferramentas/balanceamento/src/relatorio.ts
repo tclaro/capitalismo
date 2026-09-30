@@ -16,6 +16,8 @@ export interface InfoExecucao {
   trabalhadores: number;
   duracaoSegundos: number;
   ticksSimulados: number;
+  /** Confronto só de diagnóstico: o resultado não entra na aprovação. */
+  diagnostico?: boolean;
 }
 
 const reais = (x: number) => `R$ ${x.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
@@ -23,7 +25,15 @@ const reais = (x: number) => `R$ ${x.toLocaleString("pt-BR", { maximumFractionDi
 export function relatorioMarkdown(info: InfoExecucao, metricas: Metricas): string {
   const linhas: string[] = [];
   linhas.push(`# Balanceamento — ${info.presetId} (${info.confronto})`, "");
-  linhas.push(`**Resultado: ${metricas.aprovado ? "APROVADO" : "REPROVADO"}** (${metricas.criterios.filter((c) => c.passou).length} de ${metricas.criterios.length} critérios)`, "");
+  if (info.diagnostico) {
+    linhas.push(
+      `**Confronto de diagnóstico — não entra na aprovação.** Os critérios da seção 10.4 valem para o confronto equilibrado; ` +
+        `aqui aparecem só como referência (${metricas.criterios.filter((c) => c.passou).length} de ${metricas.criterios.length} atendidos).`,
+      "",
+    );
+  } else {
+    linhas.push(`**Resultado: ${metricas.aprovado ? "APROVADO" : "REPROVADO"}** (${metricas.criterios.filter((c) => c.passou).length} de ${metricas.criterios.length} critérios)`, "");
+  }
   linhas.push("| Execução | |", "|---|---|");
   linhas.push(`| Preset | \`${info.presetId}\` v${info.presetVersao} |`);
   linhas.push(`| Motor / catálogo | ${info.versaoMotor} / ${info.versaoCatalogo} |`);

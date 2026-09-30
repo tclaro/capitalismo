@@ -159,6 +159,12 @@ describe("relatórios", () => {
     expect(md).toContain("720 ticks/s");
   });
 
+  test("confronto de diagnóstico: cabeçalho próprio, sem APROVADO/REPROVADO", () => {
+    const md = relatorioMarkdown({ ...info, confronto: "subconjuntos", diagnostico: true }, metricas);
+    expect(md).toContain("Confronto de diagnóstico — não entra na aprovação");
+    expect(md).not.toContain("**Resultado:");
+  });
+
   test("CSV: cabeçalho, uma linha por empresa por partida, campos com aspas escapados", () => {
     const linhas = relatorioCsv(resultados).trimEnd().split("\n");
     expect(linhas.length).toBe(1 + 2 * 7);

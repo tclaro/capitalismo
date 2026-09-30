@@ -18,7 +18,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { PRESETS, VERSAO_CATALOGO } from "@simulador/catalogo";
 import { VERSAO_MOTOR } from "@simulador/motor";
-import { TIPOS_CONFRONTO, type TipoConfronto } from "./confronto";
+import { CONFRONTOS_DE_APROVACAO, TIPOS_CONFRONTO, type TipoConfronto } from "./confronto";
 import { calcularMetricas } from "./metricas";
 import { buscarMelhorResposta, relatorioMelhorResposta } from "./melhorResposta";
 import { executarEmParalelo } from "./paralelo";
@@ -117,12 +117,14 @@ async function principal(): Promise<number> {
       trabalhadores: o.trabalhadores,
       duracaoSegundos,
       ticksSimulados: resultados.reduce((s, r) => s + r.ticks, 0),
+      diagnostico: !CONFRONTOS_DE_APROVACAO.includes(confronto),
     };
     const base = join(o.saida, confronto);
     writeFileSync(`${base}.md`, relatorioMarkdown(info, metricas));
     writeFileSync(`${base}.csv`, relatorioCsv(resultados));
-    aprovado &&= metricas.aprovado;
-    console.log(`${confronto.padEnd(12)} ${metricas.aprovado ? "APROVADO " : "REPROVADO"} ${metricas.criterios.filter((c) => c.passou).length}/${metricas.criterios.length} critérios, ${o.sementes} partidas em ${duracaoSegundos.toFixed(1)} s → ${base}.md`);
+    if (!info.diagnostico) aprovado &&= metricas.aprovado;
+    const situacao = info.diagnostico ? "diagnóstico" : metricas.aprovado ? "APROVADO " : "REPROVADO";
+    console.log(`${confronto.padEnd(12)} ${situacao} ${metricas.criterios.filter((c) => c.passou).length}/${metricas.criterios.length} critérios, ${o.sementes} partidas em ${duracaoSegundos.toFixed(1)} s → ${base}.md`);
     for (const c of metricas.criterios.filter((x) => !x.passou)) console.log(`   falhou: ${c.descricao}: ${c.valor} (limite ${c.limite})`);
   }
   return o.exigirAprovacao && !aprovado ? 1 : 0;
