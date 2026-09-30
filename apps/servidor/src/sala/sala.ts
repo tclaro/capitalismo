@@ -72,9 +72,13 @@ export interface Resposta {
   motivo?: string;
 }
 
-/** Recebe os fatos da sala para gravar (entrega 2). Pode lançar exceção: o tick é descartado. */
+/**
+ * Recebe os fatos da sala para gravar (entrega 2). Pode lançar exceção: o tick é descartado.
+ * `gravarTick` é chamado **antes** de a sala atualizar a memória (`sala.estado` e `sala.fila` ainda
+ * são os de antes do tick); o que muda com o tick vem nos argumentos.
+ */
 export interface Observador {
-  gravarTick?(sala: Sala, resultado: ResultadoTick, semanaFechada: RegistroSemanal[] | null): void;
+  gravarTick?(sala: Sala, resultado: ResultadoTick, semanaFechada: RegistroSemanal[] | null, acumulador: AcumuladorSemanal): void;
   gravarComando?(sala: Sala, idComando: string, resposta: Resposta): void;
   gravarDecisao?(sala: Sala, item: DecisaoNaFila): void;
   gravarSala?(sala: Sala): void;
@@ -510,7 +514,7 @@ export class Sala {
       try {
         resultado = passo(this.estado, { decisoes });
         const semana = acumularTick(acumulador, resultado.historico, this.ticksPorMes);
-        this.observador.gravarTick?.(this, resultado, semana);
+        this.observador.gravarTick?.(this, resultado, semana, acumulador);
       } catch (erro) {
         this.pausar("erro", false);
         this.observador.aoErro?.(this, erro);
@@ -523,7 +527,10 @@ export class Sala {
       this.fila = [];
       this.avisosRecentes = resultado.avisos;
       for (const { empresa, fechamento } of resultado.fechamentos) (this.fechamentos[empresa] ??= []).push(fechamento);
-      if (resultado.fechamentos.length > 0) this.prontos.clear();
+      if (resultado.fechamentos.length > 0) {
+        this.prontos.clear();
+        this.observador.gravarSala?.(this);
+      }
 
       if (this.ticksRestantes() === 0) {
         this.pausar("duracao_atingida", false);
