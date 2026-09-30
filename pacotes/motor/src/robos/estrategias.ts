@@ -28,6 +28,8 @@ export interface Estrategia {
   id: string;
   nome: string;
   descricao: string;
+  /** Estratégia degenerada, só para o teste de melhor resposta do balanceamento (não oferecer em aula). */
+  soParaTeste?: boolean;
   /** Faixa [mínimo, máximo] de cada parâmetro de intensidade. */
   faixas: Record<string, readonly [number, number]>;
   decidir: (visao: VisaoEmpresa, intensidade: Intensidade, gerador: Gerador) => Decisao[];
@@ -176,10 +178,32 @@ export const ALEATORIA: Estrategia = {
   },
 };
 
+/**
+ * Decisão extrema e trivial do teste de melhor resposta (seção 10.4): preço igual ao custo completo,
+ * sem publicidade nem P&D, com gestão normal de estoque, pontos de venda e fábricas. Se ela vencer,
+ * o preset precisa ser rebalanceado.
+ */
+export const PRECO_MINIMO: Estrategia = {
+  id: "preco_minimo",
+  nome: "Preço mínimo (teste)",
+  descricao: "Degenerada: preço = custo completo, sem publicidade nem P&D. Só para o teste de melhor resposta.",
+  soParaTeste: true,
+  faixas: {},
+  decidir: (v) =>
+    decisoesDoPlano(
+      v,
+      planosPara(v, () => ({ preco: (c) => c, fabricar: true, publicidadeFracao: 0, pdFracao: 0, folga: 0.15 })),
+      { politicaFabrica: { paybackMaximo: 12, folgaDeCaixa: 0.2 }, gerirPontosDeVenda: true },
+    ),
+};
+
 /** Registro das estratégias, por id. */
 export const ESTRATEGIAS: Readonly<Record<string, Estrategia>> = Object.fromEntries(
-  [PRECO_BAIXO, PREMIUM, MARCA, EQUILIBRADA, REVENDA, PASSIVA, ALEATORIA].map((e) => [e.id, e]),
+  [PRECO_BAIXO, PREMIUM, MARCA, EQUILIBRADA, REVENDA, PASSIVA, ALEATORIA, PRECO_MINIMO].map((e) => [e.id, e]),
 );
+
+/** As 7 estratégias do confronto equilibrado (seção 10), sem as de teste. */
+export const ESTRATEGIAS_DO_CONFRONTO: readonly string[] = ["preco_baixo", "premium", "marca", "equilibrada", "revenda", "passiva", "aleatoria"];
 
 /** Estratégias "razoáveis" (seção 10.4): todas menos a passiva e a aleatória. */
 export const ESTRATEGIAS_RAZOAVEIS: readonly string[] = ["preco_baixo", "premium", "marca", "equilibrada", "revenda"];

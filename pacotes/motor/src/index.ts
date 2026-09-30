@@ -33,6 +33,23 @@ export { capacidadeDeProducao } from "./fabricacao";
 export { type CalculoIR, calcularIR, quotaDeDepreciacao } from "./financeiro";
 export { calcularPontuacao, type CriterioPontuacao, type PosicaoRanking, ranking } from "./pontuacao";
 export { visaoDaEmpresa, type InsumoReceitaVisao, type OfertaConcorrente, type OfertaPropria, type ProdutoVisivel, type VisaoEmpresa } from "./visao";
-export { decidirRobo, diaDeDecisaoDosRobos, ESTRATEGIAS, ESTRATEGIAS_RAZOAVEIS, type Estrategia, type Intensidade, sortearIntensidade } from "./robos";
+export {
+  decidirRobo,
+  diaDeDecisaoDosRobos,
+  ESTRATEGIAS,
+  ESTRATEGIAS_DO_CONFRONTO,
+  ESTRATEGIAS_RAZOAVEIS,
+  type Estrategia,
+  type Intensidade,
+  sortearIntensidade,
+} from "./robos";
+export {
+  type ConfigSimulacao,
+  type Fotografia,
+  type ResultadoSimulacao,
+  type ResumoEmpresaSimulada,
+  type RoboDaSimulacao,
+  simularPartida,
+} from "./simulacao";
 export { custoFabricado, custoPronto, paybackDaFabrica } from "./robos/comum";
 export { clonarEstado, ETAPAS, passo, passoMutavel } from "./passo";

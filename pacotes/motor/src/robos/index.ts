@@ -11,7 +11,7 @@ import type { Decisao, EstadoPartida } from "../tipos";
 import { visaoDaEmpresa } from "../visao";
 import { ESTRATEGIAS, type Intensidade } from "./estrategias";
 
-export { ESTRATEGIAS, ESTRATEGIAS_RAZOAVEIS, type Estrategia, type Intensidade } from "./estrategias";
+export { ESTRATEGIAS, ESTRATEGIAS_DO_CONFRONTO, ESTRATEGIAS_RAZOAVEIS, type Estrategia, type Intensidade } from "./estrategias";
 
 export const DIAS_DE_DECISAO_NA_SEMANA = 7;
 

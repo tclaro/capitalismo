@@ -145,7 +145,7 @@ describe("todas as estratégias geram só decisões válidas", () => {
   test("partidas com os 7 robôs, várias sementes, nos dois presets: nenhuma rejeição e invariantes em todo tick", () => {
     fc.assert(
       fc.property(fc.string({ minLength: 1, maxLength: 8 }), fc.constantFrom(PRESET_INTRODUTORIO, PRESET_TESTE), (semente, preset) => {
-        const { resultados } = rodar(partidaComRobos(semente, TODAS, preset), 75);
+        const { resultados } = rodar(partidaComRobos(semente, [...TODAS, "preco_minimo"], preset), 75);
         const rejeicoes = resultados.flatMap((r) => r.rejeicoes);
         if (rejeicoes.length > 0) throw new Error(`rejeições de robô: ${JSON.stringify(rejeicoes.slice(0, 3))}`);
         return true;
