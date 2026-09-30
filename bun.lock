@@ -27,7 +27,10 @@
     },
     "pacotes/motor": {
       "name": "@simulador/motor",
-      "version": "0.0.0",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@simulador/catalogo": "workspace:*",
+      },
     },
   },
   "packages": {
