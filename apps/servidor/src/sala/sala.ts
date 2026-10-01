@@ -21,7 +21,9 @@ import {
   type DecisaoDoAluno,
   ehFimDoMes,
   type MotivoPausa,
+  nomeDoRobo,
   normalizarNome,
+  pareceNomeDeRobo,
   type StatusSala,
   ticksAteProxima,
 } from "@simulador/compartilhado";
@@ -288,6 +290,7 @@ export class Sala {
     if (mesmoNome) return { ok: false, motivo: "já existe um aluno com esse nome nesta sala" };
     const nomeEquipe = normalizarNome(equipe.nome);
     if (!nomeEquipe) return { ok: false, motivo: "nome de equipe inválido" };
+    if (pareceNomeDeRobo(nomeEquipe)) return { ok: false, motivo: NOME_RESERVADO };
     if (this.vagas.some((v) => v.equipe && chaveDeNome(v.equipe.nome) === chaveDeNome(nomeEquipe))) {
       return { ok: false, motivo: "já existe uma equipe com esse nome" };
     }
@@ -314,6 +317,7 @@ export class Sala {
       if (!vaga?.equipe) return { ok: false, motivo: "equipe não existe" };
       const nome = normalizarNome(nomeDigitado);
       if (!nome) return { ok: false, motivo: "nome de equipe inválido" };
+      if (pareceNomeDeRobo(nome)) return { ok: false, motivo: NOME_RESERVADO };
       if (this.vagas.some((v) => v !== vaga && v.equipe && chaveDeNome(v.equipe.nome) === chaveDeNome(nome))) {
         return { ok: false, motivo: "já existe uma equipe com esse nome" };
       }
@@ -598,13 +602,17 @@ export class Sala {
   }
 }
 
+const NOME_RESERVADO = 'nomes terminados em "(robô)" são reservados aos robôs';
+
+/** Vagas com equipe usam o nome dela; robôs, os nomes da lista em ordem; vagas vazias, "Vaga N". */
 function montarPartida(preset: Preset, semente: string, config: ConfigSala, vagas: readonly Vaga[]): EstadoPartida {
+  let robos = 0;
   return criarPartida({
     preset,
     semente,
     mercados: Array.from({ length: config.mercados }, (_, i) => ({ nome: `Mercado ${i + 1}` })),
     empresas: vagas.map((v, i) => ({
-      nome: v.equipe?.nome ?? `Vaga ${i + 1}`,
+      nome: v.equipe?.nome ?? (v.robo ? nomeDoRobo(robos++) : `Vaga ${i + 1}`),
       mercado: v.mercado,
       ...(v.robo ? { robo: { estrategia: v.robo } } : {}),
     })),

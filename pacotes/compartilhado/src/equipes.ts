@@ -45,3 +45,49 @@ export function chaveDeNome(nome: string): string {
     .replace(/\p{M}/gu, "")
     .toLocaleLowerCase("pt-BR");
 }
+
+/**
+ * Nomes dos robôs: pensadores e militantes do comunismo (a ironia é proposital num simulador de
+ * mercado), sempre com "(robô)" no fim para ninguém confundir com uma equipe de alunos. São 24, o
+ * máximo de vagas de uma sala (3 mercados × 8); além disso, os nomes recomeçam numerados.
+ */
+export const NOMES_DOS_ROBOS = [
+  "Marx",
+  "Engels",
+  "Lênin",
+  "Rosa Luxemburgo",
+  "Trótski",
+  "Gramsci",
+  "Kollontai",
+  "Clara Zetkin",
+  "Bukharin",
+  "Lukács",
+  "Plekhanov",
+  "Krupskaya",
+  "Mao",
+  "Ho Chi Minh",
+  "Che Guevara",
+  "Fidel",
+  "Lafargue",
+  "Bebel",
+  "Togliatti",
+  "Thälmann",
+  "Prestes",
+  "Olga Benário",
+  "Marighella",
+  "Pagu",
+] as const;
+
+export const SUFIXO_DO_ROBO = " (robô)";
+
+/** Nome do i-ésimo robô da sala (0 = "Marx (robô)"). */
+export function nomeDoRobo(i: number): string {
+  const n = NOMES_DOS_ROBOS.length;
+  const volta = Math.floor(i / n);
+  return `${NOMES_DOS_ROBOS[i % n]}${volta > 0 ? ` ${volta + 1}` : ""}${SUFIXO_DO_ROBO}`;
+}
+
+/** Nome que termina em "(robô)" (com ou sem acento, qualquer caixa): reservado aos robôs. */
+export function pareceNomeDeRobo(nome: string): boolean {
+  return /\(\s*rob[oô]\s*\)\s*$/iu.test(nome.normalize("NFC"));
+}

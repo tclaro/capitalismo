@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import {
+  NOMES_DOS_ROBOS,
+  nomeDoRobo,
+  pareceNomeDeRobo,
   chaveDeNome,
   ConfigSala,
   CriarSala,
@@ -221,5 +224,24 @@ describe("protocolo", () => {
       }),
       { numRuns: 500 },
     );
+  });
+});
+
+describe("nomes dos robôs", () => {
+  test("24 nomes (o máximo de vagas), todos diferentes, curtos e válidos como nome", () => {
+    expect(NOMES_DOS_ROBOS).toHaveLength(24);
+    const nomes = Array.from({ length: 48 }, (_, i) => nomeDoRobo(i));
+    expect(new Set(nomes).size).toBe(48);
+    expect(nomes.slice(0, 2)).toEqual(["Marx (robô)", "Engels (robô)"]);
+    expect(nomeDoRobo(24)).toBe("Marx 2 (robô)");
+    for (const n of nomes) {
+      expect(pareceNomeDeRobo(n)).toBe(true);
+      expect([...n].length).toBeLessThanOrEqual(24);
+    }
+  });
+
+  test("reconhece o sufixo reservado (acento e caixa à parte), só no fim do nome", () => {
+    for (const s of ["A (robô)", "A (robo)", "A (ROBÔ)", "A ( robô )", "A(robô)"]) expect(pareceNomeDeRobo(s)).toBe(true);
+    for (const s of ["Robôs Unidos", "A (robô) B", "Robô", "A robô"]) expect(pareceNomeDeRobo(s)).toBe(false);
   });
 });

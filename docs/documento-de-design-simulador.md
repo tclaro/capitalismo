@@ -939,7 +939,7 @@ Confirmar com o autor antes ou durante o planejamento:
 19. ~~**TI só se necessário**~~ — **Decidido (29/09/2026):** a PoC mostrou que o modo A exigiria a TI em todas as máquinas de professor; adotado o modo B, que só exige a regra de firewall na máquina servidora (seções 9.1.1 e 9.9).
 20. **Identidade visual** — nome, logotipo, paleta e tipografia do produto (junto com a decisão 18).
 21. **Vista da cidade** — incluir a ilustração 2D/isométrica com os prédios das equipes ou ficar só com painéis e gráficos?
-22. **Origem da arte** — pacotes de licença livre, arte gerada, arte encomendada ou combinação. **Em andamento (01/10/2026):** as imagens dos produtos são geradas por IA pelo autor, com um bloco de estilo comum (ícone 3D suave, vista ¾, fundo cinza liso recortado depois); falta registrar a ferramenta e a licença em `docs/licencas-assets.md`.
+22. **Origem da arte** — pacotes de licença livre, arte gerada, arte encomendada ou combinação. **Em andamento (01/10/2026):** as imagens dos produtos são geradas por IA pelo autor, com um bloco de estilo comum (ícone 3D suave, vista ¾, fundo cinza liso recortado depois); as primeiras (iogurte e sapato) saíram do ChatGPT (plano gratuito) e as próximas devem vir do Gemini, registradas em `docs/licencas-assets.md`.
 23. **Sons** — incluir efeitos sonoros (desligados por padrão) ou não?
 24. ~~**Chave de professor (modo B)**~~ — **Decidido (30/09/2026):** uma chave única compartilhada pelos professores da instituição; cada sala continua com seu PIN.
 25. **Endereço do servidor (modo B)** — reserva de IP no DHCP ou nome da máquina no domínio? Definir antes de imprimir o endereço nos laboratórios.

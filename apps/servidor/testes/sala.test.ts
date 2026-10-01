@@ -359,3 +359,31 @@ describe("falhas e retomada", () => {
     expect(eventos.filter((e) => e === "comando").length).toBe(2);
   });
 });
+
+describe("nomes dos robôs", () => {
+  test("ao iniciar, os robôs recebem os nomes da lista em ordem, com (robô); vazias continuam Vaga N antes", () => {
+    const { sala } = novaSala({ mercados: 2, vagasPorMercado: 3, robosNasVagasVazias: "premium" });
+    criarEquipe(sala, "emp_01", "Alfa", "azul", "Ana");
+    expect(sala.estado.empresas.map((e) => e.nome)).toEqual(["Alfa", "Vaga 2", "Vaga 3", "Vaga 4", "Vaga 5", "Vaga 6"]);
+    expect(sala.comandoRelogio(cmd(), 0, "iniciar")).toEqual({ ok: true });
+    expect(sala.estado.empresas.map((e) => e.nome)).toEqual(["Alfa", "Marx (robô)", "Engels (robô)", "Lênin (robô)", "Rosa Luxemburgo (robô)", "Trótski (robô)"]);
+  });
+
+  test("sem robôs, as vagas vazias ficam inativas com o nome de vaga", () => {
+    const { sala } = novaSala({ robosNasVagasVazias: null });
+    criarEquipe(sala, "emp_01", "Alfa", "azul", "Ana");
+    sala.comandoRelogio(cmd(), 0, "iniciar");
+    expect(sala.estado.empresas.map((e) => e.nome)).toEqual(["Alfa", "Vaga 2", "Vaga 3"]);
+  });
+
+  test("equipe de alunos não pode se chamar … (robô), nem ao criar nem ao renomear", () => {
+    const { sala } = novaSala();
+    for (const nome of ["Marx (robô)", "Qualquer (Robo)", "x ( ROBÔ )"]) {
+      expect(sala.entrarAluno(`Aluno ${nome.length}`, { tipo: "nova", empresa: "emp_02", nome, cor: "verde" })).toEqual({ ok: false, motivo: 'nomes terminados em "(robô)" são reservados aos robôs' });
+    }
+    criarEquipe(sala, "emp_01", "Alfa", "azul", "Ana");
+    expect(sala.renomearEquipe(cmd(), "emp_01", "Engels (robô)")).toEqual({ ok: false, motivo: 'nomes terminados em "(robô)" são reservados aos robôs' });
+    // "Robô" no meio do nome continua permitido.
+    expect(sala.renomearEquipe(cmd(), "emp_01", "Robôs Unidos")).toEqual({ ok: true });
+  });
+});

@@ -118,7 +118,7 @@ describe("projeção do professor e relógio", () => {
     expect(p.empresas.map((e) => [e.empresa, e.nome, e.robo, e.membros.map((m) => m.nome)])).toEqual([
       ["emp_01", "Alfa", false, ["Ana"]],
       ["emp_02", "Beta", false, ["Bia"]],
-      ["emp_03", "Vaga 3", true, []],
+      ["emp_03", "Marx (robô)", true, []],
     ]);
     expect(p.empresas[0]!.caixa).toBe(sala.estado.empresas[0]!.caixa);
     expect(p.empresas[0]!.lucroUltimoMes).toBe(sala.estado.empresas[0]!.contabil.ultimoFechamento!.lucroLiquido);
