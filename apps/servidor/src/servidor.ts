@@ -22,6 +22,7 @@ import {
   type Diagnostico,
   EntrarAluno,
   EntrarProfessor,
+  type HistoricoDaSala,
   type InfoPublicaSala,
   type InfoServidor,
   type ListaDoAdmin,
@@ -403,13 +404,17 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
       return new Response(JSON.stringify({ ok: true }), { headers: h });
     }
 
-    // Séries semanais para os gráficos: o aluno só da própria empresa; o professor, de todas.
+    // Séries semanais para os gráficos: o aluno só da própria empresa; o professor, de todas. O aluno
+    // recebe também a participação semanal (pública) das empresas do seu mercado, e nada mais delas.
     if (resto === "/historico" && metodo === "GET") {
       const professor = sessaoDe(req, sala, "professor");
       const aluno = professor ? null : sessaoDe(req, sala, "aluno");
       if (!professor && !aluno) return erro(401, "entre na sala primeiro");
       const empresa = aluno ? sala.membro(aluno.membro!)!.empresa : (url.searchParams.get("empresa") ?? undefined);
-      return json({ ok: true, semanas: gerente.repositorio.historicoSemanal(sala.id, empresa) });
+      const semanas = gerente.repositorio.historicoSemanal(sala.id, empresa);
+      const mercadoDoAluno = aluno ? sala.estado.empresas.find((e) => e.id === empresa)?.mercado : undefined;
+      const mercado = mercadoDoAluno === undefined ? [] : gerente.repositorio.historicoSemanal(sala.id).filter((r) => r.mercado === mercadoDoAluno).map((r) => ({ semana: r.semana, empresa: r.empresa, produto: r.produto, participacao: r.participacao }));
+      return json({ ok: true, semanas, mercado } satisfies HistoricoDaSala);
     }
 
     // Ações do professor por HTTP (as que devolvem segredo, que não vai pelo pub/sub).

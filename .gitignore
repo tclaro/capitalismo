@@ -8,3 +8,4 @@ ferramentas/balanceamento/saida/
 apps/servidor/build/
 apps/servidor/.bun-cache/
 dados-dev/
+.bun-cache/

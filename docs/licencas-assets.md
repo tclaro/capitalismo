@@ -9,6 +9,7 @@ Origem e licença de cada recurso que vai dentro do executável (seção 8.1 do 
 | Inter (variável, subconjuntos latino e latino estendido) | Toda a interface | [rsms/inter](https://github.com/rsms/inter), pacote `@fontsource-variable/inter` 5.3.0 | SIL Open Font License 1.1 |
 | Ícones Lucide | Ícones da interface | [lucide.dev](https://lucide.dev), pacote `lucide-react` 1.49.0 | ISC |
 | Ícone do aplicativo (`apps/web/public/icone.svg`) | Aba do navegador | Desenho próprio (barras) | Do projeto |
+| Imagens dos produtos: iogurte, sapato (`apps/web/src/assets/produtos/*.webp`) | Cartões e painel dos produtos, telão | Geradas por IA pelo autor do projeto (ferramenta: **a informar**); originais em `assets/produtos/`, recorte e conversão por `bun run imagens` | **A confirmar** com os termos da ferramenta |
 
 ## Bibliotecas incluídas no código da interface
 

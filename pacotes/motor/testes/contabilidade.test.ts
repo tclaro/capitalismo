@@ -15,6 +15,7 @@ import {
   quotaDeDepreciacao,
   ranking,
   type ResultadoTick,
+  visaoDaEmpresa,
 } from "../src";
 import { decidir, empresa, PRESET_TESTE, partidaDeTeste, rodar } from "./ajuda";
 
@@ -328,3 +329,31 @@ const GOLDEN_3_MESES: (string | number)[][] = [
   ["emp_01", 3, 14_880_000, 3_058_506, 25_726_085, 0],
   ["emp_02", 3, 15_995_624, 1_558_002, 41_270_860, 0],
 ];
+
+describe("lucro do mês até agora (visão da empresa)", () => {
+  test("acompanha o lucro acumulado dentro do mês, zera no fechamento e bate com o lucro antes do IR do mês", () => {
+    let estado = partidaDeTeste(["Alfa", "Beta"]);
+    const visao = (e: EstadoPartida) => visaoDaEmpresa(e, "emp_01").empresa;
+    const tpm = visaoDaEmpresa(estado, "emp_01").ticksPorMes;
+    let inicioDoMes = visao(estado).lucrosAcumulados;
+    let conferidos = 0;
+    for (let t = 1; t <= tpm * 2; t++) {
+      const entradas = t === 1 ? { decisoes: [decidir("emp_01", LEITE, { preco: 590, compraMensal: 20_000, publicidadeMensal: 300_000 })] } : {};
+      const r = passoMutavel(estado, entradas);
+      estado = r.estado;
+      const v = visao(estado);
+      if (t % tpm === 0) {
+        // Fechamento: o parcial zera; o lucro antes do IR do mês é tudo o que o acumulado cresceu no mês (o IR sai do acumulado no fechamento).
+        expect(v.lucroDoMesAteAgora).toBe(0);
+        expect(v.ultimoFechamento!.lucroAntesIR).toBe(v.lucrosAcumulados + v.ultimoFechamento!.dre.ir - inicioDoMes);
+        inicioDoMes = v.lucrosAcumulados;
+      } else {
+        expect(v.lucroDoMesAteAgora).toBe(v.lucrosAcumulados - inicioDoMes);
+        conferidos++;
+      }
+    }
+    expect(conferidos).toBe(tpm * 2 - 2);
+    // A empresa vendeu de fato (o teste não passa com tudo zerado).
+    expect(visao(estado).ultimoFechamento!.dre.receita).toBeGreaterThan(0);
+  });
+});

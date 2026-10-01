@@ -1,0 +1,10 @@
+{
+  "name": "@simulador/imagens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Prepara as imagens dos produtos: recorta o fundo, enquadra e converte para WebP.",
+  "devDependencies": {
+    "sharp": "^0.34.4"
+  }
+}

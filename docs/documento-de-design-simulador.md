@@ -439,11 +439,11 @@ Desktop em primeiro lugar (laboratório); layout responsivo desejável, não obr
 - **Avisos:** eventos do professor, obra concluída, ruptura de estoque, caixa negativo.
 - **Estado do relógio** sempre visível (data do jogo, rodando/pausado, velocidade).
 - **Ajuda contextual** em cada decisão, explicando o conceito por trás (liga a mecânica ao conteúdo da aula).
-- **Reconexão automática** (a rede do laboratório pode oscilar); decisões não enviadas ficam salvas localmente até reconectar.
+- **Reconexão automática** (a rede do laboratório pode oscilar); decisões enviadas e ainda sem resposta ficam guardadas no navegador e são reenviadas com o mesmo identificador ao reconectar (o servidor é idempotente).
 
 ### 8.1 Design e experiência visual (todas as telas)
 
-**Situação atual:** ainda não há identidade visual definida. Esta seção traz as diretrizes; o visual concreto será validado num **protótipo visual** antes da fase 1 (roadmap, seção 14). A interface é web, então não há limitação a imagens fixas como no jogo original.
+**Situação atual:** a linguagem visual da tela do aluno foi validada com o autor num **protótipo clicável** (01/10/2026) e implementada na fase 1 (seção 8.2). O telão e o painel do professor seguem a mesma linguagem (fase 1, entrega 7). O nome e o logotipo do produto continuam provisórios (decisões 18 e 20). A interface é web, então não há limitação a imagens fixas como no jogo original.
 
 **Diretrizes:**
 - **Clareza antes de enfeite.** O aluno entende a situação da empresa em poucos segundos. Hierarquia: caixa, lucro do mês, participação de mercado e alertas.
@@ -465,6 +465,43 @@ Desktop em primeiro lugar (laboratório); layout responsivo desejável, não obr
 - **Nada do Capitalism** (arte, ícones, telas, sons).
 - Fontes de arte possíveis: ícones de licença livre (ex.: Lucide, Tabler — MIT); prédios e cenários isométricos em domínio público (ex.: pacotes Kenney, CC0); fonte tipográfica livre embutida (ex.: Inter, licença OFL); ilustrações próprias, geradas ou encomendadas (decisão 22).
 - Registrar a origem e a licença de cada recurso em `/docs/licencas-assets.md`.
+
+### 8.2 Tela de jogo do aluno (fase 1)
+
+Decidida com o autor sobre o protótipo (decisão 27): a primeira versão, em abas e cartões empilhados, "parecia uma página web". A tela de jogo é um **painel único em tela cheia, sem rolagem**.
+
+- **Disposição:**
+  - topo (HUD): equipe, data com a barra do mês e do dia, estado do relógio, caixa animado com a variação do dia, lucro do mês até agora (antes do IR) e posição no ranking;
+  - esquerda: um cartão por produto (imagem, participação, tendência, alertas) e a empresa (pontos de venda, capacidade de venda, fábricas);
+  - centro: o produto escolhido, com o palco (imagem e números do dia) e quatro painéis — preço e concorrência (nota decomposta), estoque e suprimento, marketing e P&D, participação no mercado;
+  - direita: ranking e avisos;
+  - embaixo: modo do relógio, atalhos, Resultados, Gráficos e Pronto (modo rodada).
+- **Alvo:** 1920×1080; cabe também em 1366×768 (a fonte escala pela janela). Abaixo de 1000 px de largura, empilha e libera a rolagem. Tema claro por padrão.
+- **Envio automático ("se mudou, mudou"):**
+  - cada campo é enviado sozinho depois de uma pausa curta na digitação, ao sair do campo ou com Enter, só com aquele campo;
+  - o estado aparece no próprio campo: digitando, enviando, enviado (vale a partir de amanhã, com o valor de antes), valendo, erro (do campo ou do servidor) ou travado na pausa;
+  - cada envio oferece **Desfazer**;
+  - Esc descarta o que foi digitado; −/+ e as setas mudam pelo passo;
+  - a validação é a mesma do rascunho, que concorda com o servidor (testado por propriedade).
+- **Nada treme:**
+  - todo número que muda a cada dia fica numa caixa de largura fixa, com casas decimais fixas e sem quebra de linha;
+  - as linhas da nota ficam em ordem fixa (a equipe primeiro);
+  - o eixo dos gráficos só cresce;
+  - verificado com uma varredura da posição de todos os elementos num navegador real, em 1920×1080 e 1366×768.
+- **A virada do dia não recria elementos interativos:** só mudam textos, classes e o estado habilitado. Uma confirmação em dois cliques (abrir ou fechar ponto de venda, construir fábrica) dura cerca de 6 s, sobrevive aos dias e é cancelada com Esc ou com um clique fora.
+- **Participação:** rosca com a participação de ontem (a fatia da equipe destacada; dica com nome e percentual no mouse e no teclado) sobre as linhas semanais de todas as empresas do mercado, discretas. Cada empresa tem uma cor: as equipes, a escolhida; os robôs, as livres da paleta.
+- **Avisos flutuantes, poucos de propósito:**
+  - produto esgotado: uma vez, e de novo só depois de o estoque se recuperar e esgotar outra vez;
+  - chegada ao 1º lugar ou perda do 1º lugar;
+  - desfazer.
+
+  O resto (inclusive o fechamento do mês no modo contínuo) vai só para a lista de avisos.
+- **Fechamento do mês só no modo rodada:** janela com o lucro líquido, a variação no ranking e os produtos que mais e menos faturaram. As decisões ficam liberadas e **Pronto** (tecla P) avisa o professor. No fim da duração, uma janela de fim da partida mostra a colocação.
+- **Atalhos:** 1–9 trocam de produto, R abre os resultados (DRE e balanço), G os gráficos, Esc fecha.
+- **Imagens dos produtos:** feitas pelo autor (originais em `assets/produtos/`); `bun run imagens` recorta o fundo preservando a sombra, enquadra e gera WebP de 512 px. Produto sem imagem mostra um pictograma neutro com as iniciais.
+- **Dados novos do servidor para esta tela:**
+  - o motor expõe o lucro do mês até agora na visão da própria empresa;
+  - o histórico do aluno inclui a participação semanal (pública) das empresas do seu mercado, e nenhum outro campo delas.
 
 **Sistema de design:**
 - **Tokens centralizados** (cores, tipografia, espaçamentos, raios, sombras) e componentes reutilizáveis, para mudar a identidade sem reescrever telas.
@@ -637,7 +674,7 @@ Detalhes:
 - **Backup automático** do arquivo do banco no fim de cada mês de jogo, ao encerrar a sala e na inicialização do servidor (antes das migrações), com rotação das cópias mais antigas.
 - **Retenção do estado:** estado completo do motor só do tick atual e dos fins de mês. Como o motor é determinístico, semente + log de decisões + eventos reconstroem qualquer tick (replay).
 - **Retenção das salas (modo B):** salas encerradas ficam disponíveis para relatórios até o professor excluí-las; prazo máximo a definir com a política de dados (decisão 10).
-- **Histórico para gráficos:** agregados semanais por oferta e mensais por empresa.
+- **Histórico para gráficos:** agregados semanais por oferta e mensais por empresa. O aluno recebe a série semanal completa da própria empresa e, das demais empresas do seu mercado, só a participação semanal (pública, como na tela); o professor recebe tudo.
 - **Atualização de versão:** trocar o executável. Na inicialização, o servidor faz backup do banco e aplica as migrações pendentes.
 
 ### 9.8 Regras importantes
@@ -866,7 +903,7 @@ Cada fase termina em algo utilizável.
 | Fase | Entrega | Critério de aceite |
 |---|---|---|
 | **PoC — Rede no laboratório** (primeira entrega) — **concluída em 29/09/2026** | `poc-rede.exe` com modos Professor e Aluno, relatório e roteiro de teste (seção 9.9) | Teste feito no laboratório real e relatório gerado, respondendo às duas perguntas (o executável roda? os alunos conectam?). Resultado: modo B adotado |
-| **Protótipo visual** (em paralelo à fase 0) — **dispensado (30/09/2026)**: o autor preferiu ir direto à fase 1; o visual é validado nas telas reais, com tokens para mudar a identidade depois | Telas navegáveis com dados fictícios e guia de estilo (seção 8.1) | — |
+| **Protótipo visual** (em paralelo à fase 0) — **dispensado (30/09/2026)** no início: o autor preferiu ir direto à fase 1. **Feito depois para a tela do aluno (01/10/2026)**, quando a primeira versão pareceu "uma página web"; validado com o autor e implementado (seção 8.2) | Telas navegáveis com dados fictícios e guia de estilo (seção 8.1) | — |
 | **0 — Motor e balanceamento** — **entregue em 30/09/2026, com pendência (decisão 26)** | Pacote do motor (camada 1) com **árvore de produtos genérica**, catálogo completo em dados (anexo), robôs, CLI de balanceamento, preset `introdutorio` | Testes unitários das fórmulas (incluindo a nota do manual); determinismo (mesma semente = mesmo resultado); relatório de balanceamento cumprindo as métricas da seção 10. Situação: motor, robôs, CLI e testes completos; o balanceamento fica em aberto até a fronteira tecnológica (seção 6.6) e os testes com alunos |
 | **1 — MVP em sala (rede local)** | Servidor Bun + SQLite + WebSocket, relógio no servidor, estado persistido a cada tick com retomada pausada, executável `.exe` portátil com modo servidor (modo B), várias salas simultâneas, chave de professor, PIN do professor e link do telão, entrada por endereço + código, guia de implantação do servidor, diagnóstico de rede, teste de carga, criar partida, tela de decisões, relógio (velocidade, pausa, modo rodada, avançar), painel do professor com visão geral, relatórios básicos, ranking | Piloto com uma turma real em laboratório sem falhas bloqueantes |
 | **2 — Aula completa** | Relatórios completos (DRE, balanço, fluxo de caixa), modo apresentação, debate final, exportação, salvar/abrir partida como arquivo, backup automático com rotação, modo A com tela inicial e descoberta UDP (para outras instituições), robôs no jogo, mercados paralelos, eventos básicos | Professor conduz o debate apenas com a ferramenta |
@@ -902,11 +939,12 @@ Confirmar com o autor antes ou durante o planejamento:
 19. ~~**TI só se necessário**~~ — **Decidido (29/09/2026):** a PoC mostrou que o modo A exigiria a TI em todas as máquinas de professor; adotado o modo B, que só exige a regra de firewall na máquina servidora (seções 9.1.1 e 9.9).
 20. **Identidade visual** — nome, logotipo, paleta e tipografia do produto (junto com a decisão 18).
 21. **Vista da cidade** — incluir a ilustração 2D/isométrica com os prédios das equipes ou ficar só com painéis e gráficos?
-22. **Origem da arte** — pacotes de licença livre, arte gerada, arte encomendada ou combinação.
+22. **Origem da arte** — pacotes de licença livre, arte gerada, arte encomendada ou combinação. **Em andamento (01/10/2026):** as imagens dos produtos são geradas por IA pelo autor, com um bloco de estilo comum (ícone 3D suave, vista ¾, fundo cinza liso recortado depois); falta registrar a ferramenta e a licença em `docs/licencas-assets.md`.
 23. **Sons** — incluir efeitos sonoros (desligados por padrão) ou não?
 24. ~~**Chave de professor (modo B)**~~ — **Decidido (30/09/2026):** uma chave única compartilhada pelos professores da instituição; cada sala continua com seu PIN.
 25. **Endereço do servidor (modo B)** — reserva de IP no DHCP ou nome da máquina no domínio? Definir antes de imprimir o endereço nos laboratórios.
 26. **Fronteira tecnológica e recalibração da P&D** (aberta em 30/09/2026; seção 6.6 e `docs/calibracao-introdutorio.md`, seção 6) — implementar o teto tecnológico com retorno decrescente e recalibrar exigindo, ao mesmo tempo, equilíbrio no confronto e P&D com ótimo interior. **Adiada para depois dos testes com alunos**: até lá, o preset jogável é o `introdutorio/padrao` v0.2.0, em que P&D compensa, mas o robô premium bem ajustado vence ~77% das partidas entre robôs.
+27. ~~**Interface do aluno**~~ — **Decidido (01/10/2026), sobre o protótipo clicável:** tela de jogo em painel único sem rolagem (seção 8.2); tema claro por padrão; alvo de 1920×1080 (cabendo em 1366×768); envio automático das decisões, sem "Enter para confirmar"; fechamento do mês em janela só no modo rodada; participação em rosca sobre as linhas semanais; avisos flutuantes só para produto esgotado, 1º lugar e desfazer.
 
 ---
 

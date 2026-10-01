@@ -27,6 +27,7 @@ bun run verificar      # typecheck + testes
 bun run typecheck
 bun run test
 bun run balancear      # CLI de balanceamento
+bun run imagens        # assets/produtos/*.png → apps/web/src/assets/produtos/*.webp (recorte do fundo)
 ```
 
 Servidor e interface em desenvolvimento (dois terminais):

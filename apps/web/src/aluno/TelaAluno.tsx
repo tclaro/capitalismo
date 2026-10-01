@@ -1,25 +1,27 @@
 /**
  * `/s/<código>`: tela do aluno. Sem sessão de aluno nesta sala, mostra a entrada (nome + equipe);
- * com sessão, conecta e mostra relógio, painel, decisões, relatórios, mercado e avisos.
+ * com sessão, a tela de jogo em painel único, sem rolagem: HUD no topo, produtos à esquerda, o
+ * console do produto no centro, ranking e avisos à direita e a barra de atalhos embaixo.
  */
-import { descreverData, type VisaoAluno } from "@simulador/compartilhado";
-import { CircleCheck, CircleDashed, LogOut } from "lucide-react";
-import { useEffect, useState } from "react";
+import type { DecisaoDoAluno, FechamentoMensal, VisaoAluno } from "@simulador/compartilhado";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../cliente/api";
-import { useComando } from "../cliente/useComando";
+import type { ConexaoSala } from "../cliente/conexao";
 import { useConexao } from "../cliente/useConexao";
-import { Aviso, Cabecalho, Carregando, CorEquipe, IndicadorConexao } from "../componentes/base";
-import { Abas, Ajuda, PainelDaAba } from "../componentes/interativos";
+import { Aviso, Cabecalho, Carregando } from "../componentes/base";
 import { formatarVelocidade } from "../formato";
-import { navegar } from "../roteador";
-import { AJUDA } from "./ajuda";
-import { DecisoesDaEquipe } from "./Decisoes";
+import { explicarRecusa } from "../professor/regras";
+import type { ResultadoDoEnvio } from "./CampoDecisao";
+import { ConsoleDoProduto } from "./Console";
 import { EntrarNaSala } from "./Entrar";
-import { useAvisosAcumulados } from "./ganchos";
-import { AvisosDaEquipe, MercadoDaEquipe } from "./Mercado";
-import { PainelDaEmpresa } from "./Painel";
-import { textoDoStatusAluno } from "./regras";
-import { RelatoriosDaEmpresa } from "./Relatorios";
+import { useAvisosAcumulados, useHistorico } from "./ganchos";
+import { Hud } from "./Hud";
+import { Fechamento, FimDaPartida, Graficos, Janela, Resultados } from "./Janelas";
+import { avisoDoPrimeiroLugar, novosEsgotados, posicaoNoRanking, produtosEsgotados, semanaGlobal } from "./jogo";
+import { ListaDeAvisos, RankingDoMercado } from "./Lateral";
+import { ProvedorDeNotificacoes, useNotificar } from "./notificacoes";
+import { BlocoDaEmpresa, CartoesDosProdutos } from "./Produtos";
+import { decisoesEfetivas } from "./regras";
 
 type Sessao = "verificando" | "aluno" | "sem-sessao" | { erro: string };
 
@@ -53,36 +55,17 @@ export function TelaAluno({ codigo }: { codigo: string }) {
   );
 }
 
-const ABAS = ["painel", "decisoes", "relatorios", "mercado", "avisos"] as const;
-type AbaId = (typeof ABAS)[number];
-
 function Jogo({ codigo, aoSair }: { codigo: string; aoSair: () => void }) {
   const { instantaneo, conexao } = useConexao<VisaoAluno>(codigo, "aluno");
-  const [aba, setAba] = useState<AbaId>("painel");
   const v = instantaneo.visao;
-  const avisos = useAvisosAcumulados(v?.relogio.tick, v?.avisos);
-  const [avisosVistos, setAvisosVistos] = useState(0);
-  useEffect(() => {
-    if (aba === "avisos") setAvisosVistos(avisos.length);
-  }, [aba, avisos.length]);
-
   async function sair() {
     await api.sair(codigo);
     aoSair();
   }
-
-  return (
-    <>
-      <Cabecalho>
-        {v && <CorEquipe cor={v.equipe.cor} nome={v.equipe.nome} />}
-        <span className="codigo-sala">{codigo}</span>
-        <IndicadorConexao instantaneo={instantaneo} />
-        <button type="button" className="botao" onClick={() => void sair()} title="Sair desta sala neste computador">
-          <LogOut aria-hidden size={16} /> Sair
-        </button>
-      </Cabecalho>
+  if (!v) {
+    return (
       <main className="conteudo pilha">
-        {instantaneo.motivo && (
+        {instantaneo.motivo ? (
           <Aviso tipo="erro">
             {instantaneo.motivo}{" "}
             <a
@@ -95,74 +78,225 @@ function Jogo({ codigo, aoSair }: { codigo: string; aoSair: () => void }) {
               Entrar de novo
             </a>
           </Aviso>
-        )}
-        {instantaneo.erro && <Aviso tipo="alerta">{instantaneo.erro}</Aviso>}
-        {!v ? (
-          instantaneo.estado !== "encerrada" && <Carregando texto="Conectando à sala…" />
         ) : (
-          <>
-            <BarraDoAluno v={v} conexao={conexao} reconectando={instantaneo.estado === "reconectando"} />
-            <Abas
-              rotulo="Seções da empresa"
-              atual={aba}
-              aoMudar={(id) => setAba(id as AbaId)}
-              abas={[
-                { id: "painel", rotulo: "Painel" },
-                { id: "decisoes", rotulo: "Decisões", selo: v.pendentes.length || null },
-                { id: "relatorios", rotulo: "Relatórios" },
-                { id: "mercado", rotulo: "Mercado" },
-                { id: "avisos", rotulo: "Avisos", selo: avisos.length - avisosVistos || null },
-              ]}
-            />
-            <PainelDaAba id={aba}>
-              {aba === "painel" && <PainelDaEmpresa v={v} />}
-              {aba === "decisoes" && <DecisoesDaEquipe v={v} conexao={conexao} codigo={codigo} />}
-              {aba === "relatorios" && <RelatoriosDaEmpresa v={v} codigo={codigo} />}
-              {aba === "mercado" && <MercadoDaEquipe v={v} />}
-              {aba === "avisos" && <AvisosDaEquipe v={v} avisos={avisos} />}
-            </PainelDaAba>
-          </>
+          <Carregando texto="Conectando à sala…" />
         )}
       </main>
-    </>
+    );
+  }
+  return (
+    <ProvedorDeNotificacoes>
+      <TelaDeJogo v={v} codigo={codigo} conexao={conexao} instantaneo={instantaneo} aoSair={() => void sair()} aoEntrarDeNovo={aoSair} />
+    </ProvedorDeNotificacoes>
   );
 }
 
-function BarraDoAluno({ v, conexao, reconectando }: { v: VisaoAluno; conexao: ReturnType<typeof useConexao<VisaoAluno>>["conexao"]; reconectando: boolean }) {
-  const { executar, enviando, erro } = useComando(conexao);
+type JanelaAberta = null | "resultados" | "graficos" | { tipo: "fechamento"; f: FechamentoMensal; posicaoAntes: number | null } | "fim";
+
+function TelaDeJogo({
+  v,
+  codigo,
+  conexao,
+  instantaneo,
+  aoSair,
+  aoEntrarDeNovo,
+}: {
+  v: VisaoAluno;
+  codigo: string;
+  conexao: ConexaoSala<VisaoAluno> | null;
+  instantaneo: ReturnType<typeof useConexao<VisaoAluno>>["instantaneo"];
+  aoSair: () => void;
+  aoEntrarDeNovo: () => void;
+}) {
+  const notificar = useNotificar();
   const r = v.relogio;
-  const jogando = r.status === "rodando" || r.status === "pausada";
+  const produtos = v.visao.produtos;
+  const [selecionado, setSelecionado] = useState(produtos[0]?.id ?? "");
+  const sel = produtos.some((p) => p.id === selecionado) ? selecionado : (produtos[0]?.id ?? "");
+  const [janela, setJanela] = useState<JanelaAberta>(null);
+  const historico = useHistorico(codigo, semanaGlobal(r.tick, r.ticksPorMes));
+  const avisos = useAvisosAcumulados(r.tick, v.avisos);
+  const [enviandoPronto, setEnviandoPronto] = useState(false);
+
+  // Tela cheia sem rolagem (e a escala da fonte pela janela) só enquanto o jogo está aberto.
+  useEffect(() => {
+    document.documentElement.classList.add("j-modo-jogo");
+    return () => document.documentElement.classList.remove("j-modo-jogo");
+  }, []);
+
+  // Último preço com que cada produto foi vendido (para "voltar a vender" sem redigitar).
+  const ultimoPreco = useRef(new Map<string, number>());
+  for (const [produto, d] of Object.entries(decisoesEfetivas(v.visao, v.pendentes))) if (d.preco !== null) ultimoPreco.current.set(produto, d.preco);
+
+  async function comandar(decisoes: DecisaoDoAluno[]): Promise<ResultadoDoEnvio> {
+    if (!conexao) return { motivo: "sem conexão com a sala" };
+    const res = await conexao.comando({ tipo: "decidir", decisoes });
+    return res.ok ? true : { motivo: explicarRecusa(res.motivo) };
+  }
+
+  async function alternarPronto() {
+    if (!conexao || enviandoPronto) return;
+    setEnviandoPronto(true);
+    const res = await conexao.comando({ tipo: "pronto", pronto: !v.pronto });
+    setEnviandoPronto(false);
+    if (!res.ok) notificar(explicarRecusa(res.motivo));
+  }
+
+  // Avisos flutuantes: produto esgotado (uma vez até se recuperar) e o 1º lugar do ranking.
+  const esgotados = useRef<Set<string> | null>(null);
+  const posicao = useRef<number | null | undefined>(undefined);
+  const tickVisto = useRef<number | null>(null);
+  const posicaoAntesDoMes = useRef<number | null>(null);
+  const janelasMostradas = useRef(new Set<string>());
+  useEffect(() => {
+    if (tickVisto.current === r.tick) return;
+    const primeira = tickVisto.current === null;
+    tickVisto.current = r.tick;
+    const agora = produtosEsgotados(v);
+    for (const p of novosEsgotados(esgotados.current, agora)) {
+      const nome = produtos.find((x) => x.id === p)?.nome ?? p;
+      notificar(`${nome} esgotou: há clientes sem produto. Ajuste a compra ou a produção.`, { rotulo: "Ver", executar: () => setSelecionado(p) });
+    }
+    esgotados.current = agora;
+    const pos = posicaoNoRanking(v);
+    const texto = primeira ? null : avisoDoPrimeiroLugar(posicao.current ?? null, pos);
+    if (texto) notificar(texto);
+
+    // Fechamento do mês (só no modo rodada) e fim da partida: abrem uma vez cada.
+    const f = v.fechamentos.at(-1);
+    if (r.status === "pausada" && r.motivoPausa === "fim_do_mes" && r.modo === "rodada" && f && !janelasMostradas.current.has(`mes-${f.mes}`)) {
+      janelasMostradas.current.add(`mes-${f.mes}`);
+      setJanela({ tipo: "fechamento", f, posicaoAntes: posicaoAntesDoMes.current });
+    }
+    if (((r.status === "pausada" && r.motivoPausa === "duracao_atingida") || r.status === "encerrada") && !janelasMostradas.current.has(`fim-${r.status}`)) {
+      janelasMostradas.current.add(`fim-${r.status}`);
+      setJanela("fim");
+    }
+    if (r.dia === 1 || primeira) posicaoAntesDoMes.current = pos;
+    posicao.current = pos;
+  });
+
+  // Atalhos: 1–9 produtos, R resultados, G gráficos, P pronto (modo rodada).
+  const atalhos = useRef<(e: KeyboardEvent) => void>(() => {});
+  atalhos.current = (e) => {
+    if (janela !== null || e.ctrlKey || e.metaKey || e.altKey) return;
+    const alvo = e.target as Element | null;
+    if (alvo instanceof Element && alvo.matches("input, textarea, select")) return;
+    const n = Number(e.key);
+    if (Number.isInteger(n) && n >= 1 && n <= Math.min(9, produtos.length)) {
+      setSelecionado(produtos[n - 1]!.id);
+      e.preventDefault();
+    } else if (e.key === "r" || e.key === "R") setJanela("resultados");
+    else if (e.key === "g" || e.key === "G") setJanela("graficos");
+    else if ((e.key === "p" || e.key === "P") && r.modo === "rodada") void alternarPronto();
+  };
+  useEffect(() => {
+    const ouvir = (e: KeyboardEvent) => atalhos.current(e);
+    document.addEventListener("keydown", ouvir);
+    return () => document.removeEventListener("keydown", ouvir);
+  }, []);
+
+  const faixa =
+    r.status === "preparacao"
+      ? "Aguardando o professor iniciar a partida. Vocês já podem preparar as decisões."
+      : r.status === "encerrada"
+        ? "Partida encerrada: os resultados estão congelados."
+        : r.status === "pausada" && r.motivoPausa === "manual"
+          ? r.podeEditar
+            ? "Pausado pelo professor: as decisões continuam liberadas."
+            : "Pausado pelo professor: as decisões estão travadas até ele liberar."
+          : r.status === "pausada" && r.motivoPausa === "duracao_atingida"
+            ? "Fim do tempo previsto: aguardem o professor encerrar ou estender a partida."
+            : null;
+
   return (
-    <div className="pilha" style={{ position: "sticky", top: 0, zIndex: 5 }}>
-      <div className="barra-relogio" role="region" aria-label="Relógio da partida">
-        <div>
-          <div className="data">{descreverData(r.tick, r.ticksPorMes)}</div>
-          <div className="pequeno texto-2">
-            Mês {r.tick === 0 ? 0 : r.mes} de {r.duracaoMeses} · {formatarVelocidade(r.segundosPorTick)}
-          </div>
+    <div className="j-app">
+      <Hud v={v} instantaneo={instantaneo} aoSair={aoSair} />
+      {(instantaneo.motivo || instantaneo.erro || instantaneo.estado === "reconectando") && (
+        <div className="j-faixa-conexao" role="alert">
+          {instantaneo.motivo ? (
+            <>
+              {instantaneo.motivo}{" "}
+              <a
+                href={`/s/${codigo}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  aoEntrarDeNovo();
+                }}
+              >
+                Entrar de novo
+              </a>
+            </>
+          ) : instantaneo.erro ? (
+            instantaneo.erro
+          ) : (
+            "Sem conexão com o servidor: os números podem estar atrasados. Tentando reconectar…"
+          )}
         </div>
-        <span className={`selo ${r.status === "rodando" ? "sucesso" : r.status === "pausada" ? "alerta" : ""}`} role="status">
-          {textoDoStatusAluno(r)}
+      )}
+      <main className="j-principal">
+        <nav className="j-coluna" aria-label="Produtos e empresa">
+          <CartoesDosProdutos v={v} selecionado={sel} aoSelecionar={setSelecionado} mercado={historico.mercado} />
+          <BlocoDaEmpresa v={v} comandar={comandar} />
+        </nav>
+        <section className={`j-console${faixa ? " com-faixa" : ""}${!r.podeEditar ? " travado" : ""}`} aria-label="Produto escolhido">
+          {faixa && (
+            <div className="j-faixa" role="status">
+              {faixa}
+            </div>
+          )}
+          {sel && <ConsoleDoProduto key={sel} v={v} produto={sel} comandar={comandar} ultimoPreco={ultimoPreco.current} mercado={historico.mercado} trocou />}
+        </section>
+        <aside className="j-coluna" aria-label="Mercado">
+          <RankingDoMercado v={v} />
+          <ListaDeAvisos v={v} avisos={avisos} />
+        </aside>
+      </main>
+      <footer className="j-rodape">
+        <span className="j-modo">
+          {r.modo === "rodada" ? `Modo rodada: o mês para no dia ${r.ticksPorMes} para vocês decidirem · ${formatarVelocidade(r.segundosPorTick)}` : `Modo contínuo · ${formatarVelocidade(r.segundosPorTick)} · as mudanças valem a partir do dia seguinte`}
         </span>
-        {reconectando && <span className="selo alerta">sem conexão: os dados podem estar atrasados</span>}
-        <span className="espaco" />
-        {jogando && (
-          <span className="linha">
-            <button
-              type="button"
-              className={`botao${v.pronto ? "" : " primario"}`}
-              aria-pressed={v.pronto}
-              disabled={enviando}
-              onClick={() => void executar({ tipo: "pronto", pronto: !v.pronto })}
-            >
-              {v.pronto ? <CircleCheck aria-hidden size={18} /> : <CircleDashed aria-hidden size={18} />}
-              {v.pronto ? "Equipe pronta (desfazer)" : "Marcar equipe como pronta"}
-            </button>
-            <Ajuda titulo="pronto">{AJUDA.pronto}</Ajuda>
+        <span className="j-atalhos" aria-hidden="true">
+          <span>
+            <kbd>1</kbd>–<kbd>{Math.min(9, produtos.length)}</kbd> produtos
           </span>
-        )}
-      </div>
-      {erro && <Aviso tipo="erro">{erro}</Aviso>}
+          <span>
+            <kbd>R</kbd> resultados
+          </span>
+          <span>
+            <kbd>G</kbd> gráficos
+          </span>
+          <span>
+            <kbd>Esc</kbd> fechar
+          </span>
+        </span>
+        <span className="j-botoes">
+          <button type="button" className="botao" onClick={() => setJanela("resultados")}>
+            Resultados <kbd>R</kbd>
+          </button>
+          <button type="button" className="botao" onClick={() => setJanela("graficos")}>
+            Gráficos <kbd>G</kbd>
+          </button>
+          {r.modo === "rodada" && (r.status === "rodando" || r.status === "pausada") && (
+            <button type="button" className={`botao j-pronto${v.pronto ? " sim" : ""}`} aria-pressed={v.pronto} disabled={enviandoPronto} onClick={() => void alternarPronto()}>
+              {v.pronto ? "Pronto ✓" : "Pronto"} <kbd>P</kbd>
+            </button>
+          )}
+        </span>
+      </footer>
+
+      {janela === "resultados" && (
+        <Janela titulo="Resultados" aoFechar={() => setJanela(null)}>
+          <Resultados v={v} />
+        </Janela>
+      )}
+      {janela === "graficos" && (
+        <Janela titulo="Gráficos" aoFechar={() => setJanela(null)}>
+          <Graficos v={v} historico={historico} />
+        </Janela>
+      )}
+      {janela !== null && typeof janela === "object" && <Fechamento v={v} f={janela.f} posicaoAntes={janela.posicaoAntes} historico={historico} aoFechar={() => setJanela(null)} aoVerResultados={() => setJanela("resultados")} />}
+      {janela === "fim" && <FimDaPartida v={v} aoFechar={() => setJanela(null)} aoVerResultados={() => setJanela("resultados")} />}
     </div>
   );
 }

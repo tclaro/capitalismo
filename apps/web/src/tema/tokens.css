@@ -60,6 +60,13 @@
   --cor-fundo-lucro: #e3f4ea;
   --cor-fundo-prejuizo: #fbe7e5;
   --cor-fundo-alerta: #fbf0d6;
+  /* Tela de jogo: fundo do palco e das miniaturas, destaque suave e as partes da nota (cores que
+     não se confundem com as das equipes). */
+  --cor-palco: #e7edf5;
+  --cor-destaque-suave: #e3eef9;
+  --cor-seg-qualidade: #3b6fb6;
+  --cor-seg-marca: #8d6cc0;
+  --cor-seg-preco: #2f9a8a;
 
   color-scheme: light;
 }
@@ -83,6 +90,11 @@
     --cor-fundo-lucro: #16301f;
     --cor-fundo-prejuizo: #3a1a18;
     --cor-fundo-alerta: #362a0f;
+    --cor-palco: #1d2530;
+    --cor-destaque-suave: #17283a;
+    --cor-seg-qualidade: #6f9fe0;
+    --cor-seg-marca: #b497e6;
+    --cor-seg-preco: #4fc2b0;
     --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
     --sombra-2: 0 4px 12px rgb(0 0 0 / 0.5);
     color-scheme: dark;
@@ -107,6 +119,11 @@
   --cor-fundo-lucro: #16301f;
   --cor-fundo-prejuizo: #3a1a18;
   --cor-fundo-alerta: #362a0f;
+  --cor-palco: #1d2530;
+  --cor-destaque-suave: #17283a;
+  --cor-seg-qualidade: #6f9fe0;
+  --cor-seg-marca: #b497e6;
+  --cor-seg-preco: #4fc2b0;
   --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
   --sombra-2: 0 4px 12px rgb(0 0 0 / 0.5);
   color-scheme: dark;

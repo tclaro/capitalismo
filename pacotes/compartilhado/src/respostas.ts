@@ -90,3 +90,37 @@ export interface Diagnostico {
   /** Mais recentes primeiro. */
   testes: RegistroDeTeste[];
 }
+
+/** Registro semanal de uma oferta (gráficos). O aluno recebe só os da própria empresa. */
+export interface SemanaDaOferta {
+  /** Semana global da partida (1 = primeira semana do mês 1; 4 semanas por mês). */
+  semana: number;
+  mes: number;
+  empresa: string;
+  mercado: string;
+  produto: string;
+  vendas: number;
+  demanda: number;
+  receita: number;
+  preco: number | null;
+  nota: number;
+  participacao: number;
+  marca: number;
+  qualidade: number;
+  estoqueFinal: number;
+}
+
+/** Participação semanal (pública) de uma empresa do mercado do aluno: só este campo dos concorrentes. */
+export interface ParticipacaoSemanal {
+  semana: number;
+  empresa: string;
+  produto: string;
+  participacao: number;
+}
+
+export interface HistoricoDaSala {
+  ok: true;
+  semanas: SemanaDaOferta[];
+  /** Aluno: participação semanal de todas as empresas do seu mercado. Professor: vazio (já recebe tudo em `semanas`). */
+  mercado: ParticipacaoSemanal[];
+}

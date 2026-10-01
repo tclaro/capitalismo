@@ -530,6 +530,7 @@ details > summary {
   display: inline-flex;
   align-items: center;
   gap: var(--esp-2);
+  white-space: nowrap;
 }
 
 /* Campo com mudança que vale no próximo dia */

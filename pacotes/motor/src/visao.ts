@@ -9,6 +9,7 @@
 import { capacidadeDeProducao, multiplicadorMaoDeObra } from "./fabricacao";
 import { marca as calcularMarca } from "./formulas/marca";
 import { tetoDePreco } from "./formulas/nota";
+import { lucroAntesIR } from "./contabilidade";
 import { criarContexto } from "./contexto";
 import type { Centavos } from "./dinheiro";
 import type { DecisaoProdutoVigente, EstadoPartida, FechamentoMensal } from "./tipos";
@@ -95,6 +96,8 @@ export interface VisaoEmpresa {
     pontosDeVendaEmObra: number;
     capacidadeVendaPorTick: number;
     lucrosAcumulados: Centavos;
+    /** Lucro do mês corrente até o último dia processado, antes do IR (zera no fechamento do mês). */
+    lucroDoMesAteAgora: Centavos;
     ultimoFechamento: FechamentoMensal | null;
     ofertas: OfertaPropria[];
   };
@@ -177,6 +180,7 @@ export function visaoDaEmpresa(estado: EstadoPartida, empresaId: string): VisaoE
       pontosDeVendaEmObra: empresa.pontosDeVenda.length - pdvOperando,
       capacidadeVendaPorTick: capacidadeDeVenda(empresa, ctx),
       lucrosAcumulados: empresa.contabil.lucrosAcumulados,
+      lucroDoMesAteAgora: lucroAntesIR(empresa.contabil.mesAtual.dre),
       ultimoFechamento: empresa.contabil.ultimoFechamento ? JSON.parse(JSON.stringify(empresa.contabil.ultimoFechamento)) : null,
       ofertas: empresa.ofertas.map((o) => {
         const produto = ctx.produtos.get(o.produto)!;

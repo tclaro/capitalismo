@@ -90,9 +90,40 @@ describe("fluxo da sala", () => {
     expect(new Set(hAluno.corpo.semanas.map((r: { empresa: string }) => r.empresa))).toEqual(new Set(["emp_01"]));
     const hAlunoForjado = await s.ana.nav.pedir(`/api/salas/${s.codigo}/historico?empresa=emp_02`);
     expect(new Set(hAlunoForjado.corpo.semanas.map((r: { empresa: string }) => r.empresa))).toEqual(new Set(["emp_01"]));
+    // Participação pública do mercado: todas as empresas do mercado, e só a participação delas.
+    for (const h of [hAluno, hAlunoForjado]) {
+      expect(new Set(h.corpo.mercado.map((r: { empresa: string }) => r.empresa))).toEqual(new Set(["emp_01", "emp_02", "emp_03"]));
+      expect(new Set(h.corpo.mercado.flatMap((r: object) => Object.keys(r)))).toEqual(new Set(["semana", "empresa", "produto", "participacao"]));
+    }
+    const doMercado = (h: typeof hAluno, e: string) => h.corpo.mercado.filter((r: { empresa: string }) => r.empresa === e).map((r: { participacao: number }) => r.participacao);
     const hProf = await s.prof.pedir(`/api/salas/${s.codigo}/historico`);
     expect(new Set(hProf.corpo.semanas.map((r: { empresa: string }) => r.empresa))).toEqual(new Set(["emp_01", "emp_02", "emp_03"]));
+    // Os valores conferem com o registro completo (que só o professor vê).
+    for (const e of ["emp_01", "emp_02", "emp_03"]) expect(doMercado(hAluno, e)).toEqual(hProf.corpo.semanas.filter((r: { empresa: string }) => r.empresa === e).map((r: { participacao: number }) => r.participacao));
+    expect(hProf.corpo.mercado).toEqual([]);
     expect((await amb.navegador().pedir(`/api/salas/${s.codigo}/historico`)).status).toBe(401);
+  });
+
+  test("histórico com mercados paralelos: o aluno não recebe a participação do outro mercado", async () => {
+    const prof = amb.navegador();
+    const criada = await prof.post("/api/salas", { chave: CHAVE, config: { ...CONFIG, mercados: 2, vagasPorMercado: 2 } });
+    expect(criada.status).toBe(201);
+    const codigo = criada.corpo.codigo as string;
+    const publico = await amb.navegador().pedir(`/api/salas/${codigo}`);
+    const vagas = publico.corpo.vagas as { empresa: string; mercado: string }[];
+    const mercadoUm = vagas[0]!.mercado;
+    const nav = amb.navegador();
+    expect((await nav.post("/api/alunos/entrar", { codigo, nome: "Ana", equipe: { tipo: "nova", empresa: vagas[0]!.empresa, nome: "Alfa", cor: "azul" } })).status).toBe(200);
+    const ws = await prof.ws({ codigo, papel: "professor" });
+    const c = cmd();
+    ws.enviar({ tipo: "relogio", idComando: c, tickEsperado: 0, acao: "iniciar" });
+    expect((await ws.resposta(c)).ok).toBe(true);
+    amb.relogio.avancar(14_000);
+    await ws.esperar((m) => ehVisao(m) && (m as Atualizacao<VisaoProfessor>).visao.relogio.tick === 14);
+    const h = await nav.pedir(`/api/salas/${codigo}/historico`);
+    expect(h.status).toBe(200);
+    expect(h.corpo.mercado.length).toBeGreaterThan(0);
+    expect(new Set(h.corpo.mercado.map((r: { empresa: string }) => r.empresa))).toEqual(new Set(vagas.filter((v) => v.mercado === mercadoUm).map((v) => v.empresa)));
   });
 
   test("comandos idempotentes e tickEsperado desatualizado devolve snapshot", async () => {
