@@ -366,7 +366,21 @@ describe("nomes dos robôs", () => {
     criarEquipe(sala, "emp_01", "Alfa", "azul", "Ana");
     expect(sala.estado.empresas.map((e) => e.nome)).toEqual(["Alfa", "Vaga 2", "Vaga 3", "Vaga 4", "Vaga 5", "Vaga 6"]);
     expect(sala.comandoRelogio(cmd(), 0, "iniciar")).toEqual({ ok: true });
-    expect(sala.estado.empresas.map((e) => e.nome)).toEqual(["Alfa", "Marx (robô)", "Engels (robô)", "Lênin (robô)", "Rosa Luxemburgo (robô)", "Trótski (robô)"]);
+    expect(sala.estado.empresas.map((e) => e.nome)).toEqual(["Alfa", "Marx (robô)", "Engels (robô)", "Lênin (robô)", "Trótski (robô)", "Gramsci (robô)"]);
+  });
+
+  test("no máximo 10 robôs por sala, alternando entre os mercados; as vagas que sobram ficam inativas", () => {
+    const { sala } = novaSala({ mercados: 3, vagasPorMercado: 8, robosNasVagasVazias: "premium" });
+    criarEquipe(sala, "emp_01", "Alfa", "azul", "Ana");
+    sala.comandoRelogio(cmd(), 0, "iniciar");
+    const robos = sala.vagas.filter((v) => v.robo !== null);
+    expect(robos).toHaveLength(10);
+    expect(sala.vagas.filter((v) => v.inativa)).toHaveLength(23 - 10);
+    expect(sala.vagas.every((v) => !(v.robo !== null && v.inativa))).toBe(true);
+    // 4 + 3 + 3: o primeiro mercado tem uma vaga a menos (a da equipe) e começa a rodada.
+    expect([0, 1, 2].map((m) => robos.filter((v) => v.mercado === m).length)).toEqual([4, 3, 3]);
+    const nomes = sala.estado.empresas.filter((e) => e.tipo === "robo").map((e) => e.nome);
+    expect(nomes).toEqual(["Marx", "Engels", "Lênin", "Trótski", "Gramsci", "Kollontai", "Clara Zetkin", "Bukharin", "Lukács", "Plekhanov"].map((n) => `${n} (robô)`));
   });
 
   test("sem robôs, as vagas vazias ficam inativas com o nome de vaga", () => {

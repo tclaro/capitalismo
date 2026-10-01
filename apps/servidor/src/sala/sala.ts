@@ -20,6 +20,7 @@ import {
   chaveDeNome,
   type DecisaoDoAluno,
   ehFimDoMes,
+  MAXIMO_DE_ROBOS,
   type MotivoPausa,
   nomeDoRobo,
   normalizarNome,
@@ -570,13 +571,29 @@ export class Sala {
     this.observador.aoMudar?.(this, "status");
   }
 
-  /** Vagas vazias viram robôs ou ficam inativas; a partida é recriada com a configuração final. */
+  /**
+   * Vagas vazias viram robôs até `MAXIMO_DE_ROBOS`, alternando entre os mercados (nenhum mercado
+   * fica sem robô enquanto outro tem vários); as demais ficam inativas. A partida é recriada com a
+   * configuração final.
+   */
   private prepararInicio(): void {
-    for (const v of this.vagas) {
-      if (v.equipe) continue;
-      if (this.config.robosNasVagasVazias !== null) v.robo = this.config.robosNasVagasVazias;
-      else v.inativa = true;
+    const vazias = this.vagas.filter((v) => !v.equipe);
+    const estrategia = this.config.robosNasVagasVazias;
+    if (estrategia !== null) {
+      const filas = new Map<number, Vaga[]>();
+      for (const v of vazias) filas.set(v.mercado, [...(filas.get(v.mercado) ?? []), v]);
+      let restantes = MAXIMO_DE_ROBOS;
+      for (let rodada = 0; restantes > 0 && [...filas.values()].some((f) => f.length > rodada); rodada++) {
+        for (const fila of filas.values()) {
+          const v = fila[rodada];
+          if (v && restantes > 0) {
+            v.robo = estrategia;
+            restantes--;
+          }
+        }
+      }
     }
+    for (const v of vazias) if (v.robo === null) v.inativa = true;
     this.recriarPartida();
   }
 

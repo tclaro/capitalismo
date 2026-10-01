@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import {
+  MAXIMO_DE_ROBOS,
   NOMES_DOS_ROBOS,
   nomeDoRobo,
   pareceNomeDeRobo,
@@ -228,12 +229,14 @@ describe("protocolo", () => {
 });
 
 describe("nomes dos robôs", () => {
-  test("24 nomes (o máximo de vagas), todos diferentes, curtos e válidos como nome", () => {
-    expect(NOMES_DOS_ROBOS).toHaveLength(24);
-    const nomes = Array.from({ length: 48 }, (_, i) => nomeDoRobo(i));
-    expect(new Set(nomes).size).toBe(48);
+  test("10 nomes (o máximo de robôs por sala), sem repetir, curtos e válidos como nome", () => {
+    expect(NOMES_DOS_ROBOS).toHaveLength(10);
+    expect(MAXIMO_DE_ROBOS).toBe(10);
+    expect(NOMES_DOS_ROBOS).not.toContain("Rosa Luxemburgo");
+    const nomes = Array.from({ length: 20 }, (_, i) => nomeDoRobo(i));
+    expect(new Set(nomes).size).toBe(20);
     expect(nomes.slice(0, 2)).toEqual(["Marx (robô)", "Engels (robô)"]);
-    expect(nomeDoRobo(24)).toBe("Marx 2 (robô)");
+    expect(nomeDoRobo(10)).toBe("Marx 2 (robô)");
     for (const n of nomes) {
       expect(pareceNomeDeRobo(n)).toBe(true);
       expect([...n].length).toBeLessThanOrEqual(24);

@@ -48,35 +48,13 @@ export function chaveDeNome(nome: string): string {
 
 /**
  * Nomes dos robôs: pensadores e militantes do comunismo (a ironia é proposital num simulador de
- * mercado), sempre com "(robô)" no fim para ninguém confundir com uma equipe de alunos. São 24, o
- * máximo de vagas de uma sala (3 mercados × 8); além disso, os nomes recomeçam numerados.
+ * mercado), sempre com "(robô)" no fim para ninguém confundir com uma equipe de alunos. Uma sala tem
+ * no máximo um robô por nome (`MAXIMO_DE_ROBOS`); as vagas vazias além disso ficam inativas.
  */
-export const NOMES_DOS_ROBOS = [
-  "Marx",
-  "Engels",
-  "Lênin",
-  "Rosa Luxemburgo",
-  "Trótski",
-  "Gramsci",
-  "Kollontai",
-  "Clara Zetkin",
-  "Bukharin",
-  "Lukács",
-  "Plekhanov",
-  "Krupskaya",
-  "Mao",
-  "Ho Chi Minh",
-  "Che Guevara",
-  "Fidel",
-  "Lafargue",
-  "Bebel",
-  "Togliatti",
-  "Thälmann",
-  "Prestes",
-  "Olga Benário",
-  "Marighella",
-  "Pagu",
-] as const;
+export const NOMES_DOS_ROBOS = ["Marx", "Engels", "Lênin", "Trótski", "Gramsci", "Kollontai", "Clara Zetkin", "Bukharin", "Lukács", "Plekhanov"] as const;
+
+/** Robôs por sala, no máximo: mais do que isso a partida vira robôs jogando entre si. */
+export const MAXIMO_DE_ROBOS = NOMES_DOS_ROBOS.length;
 
 export const SUFIXO_DO_ROBO = " (robô)";
 

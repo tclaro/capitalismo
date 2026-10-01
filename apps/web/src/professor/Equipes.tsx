@@ -2,7 +2,7 @@
  * Equipes por mercado: vagas livres, equipes formadas pelos alunos, robôs e vagas inativas; quem
  * está conectado e pronto; renomear equipe e mover aluno.
  */
-import { TAMANHO_MAXIMO_NOME, type VisaoProfessor } from "@simulador/compartilhado";
+import { MAXIMO_DE_ROBOS, TAMANHO_MAXIMO_NOME, type VisaoProfessor } from "@simulador/compartilhado";
 import { Bot, CircleCheck, CircleDashed, Pencil, Users, Wifi, WifiOff } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import type { ConexaoSala } from "../cliente/conexao";
@@ -30,7 +30,7 @@ export function EquipesDaSala({ visao, conexao }: Props) {
       </p>
       {emPreparacao && livres > 0 && (
         <p className="pequeno texto-2" style={{ margin: 0 }}>
-          Ao iniciar, as vagas livres {visao.robosNasVagasVazias ? `viram robôs (${nomeDaEstrategia(visao.robosNasVagasVazias)})` : "ficam inativas (fora do jogo)"}.
+          Ao iniciar, as vagas livres {visao.robosNasVagasVazias ? `viram robôs (${nomeDaEstrategia(visao.robosNasVagasVazias)}), até ${MAXIMO_DE_ROBOS} por sala; as que sobrarem ficam inativas` : "ficam inativas (fora do jogo)"}.
         </p>
       )}
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
