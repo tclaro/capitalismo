@@ -10,6 +10,7 @@ import { decidirRobo, ESTRATEGIAS, sortearIntensidade } from "./robos";
 import {
   type EstadoAtivo,
   type EstadoEmpresa,
+  type EstadoMateriaPrima,
   type EstadoMercado,
   type EstadoOferta,
   type EstadoPartida,
@@ -34,11 +35,14 @@ export interface ConfigPartida {
   /** Mercados paralelos com os mesmos parâmetros (seção 2). Padrão: um mercado. */
   mercados?: readonly { nome: string }[];
   empresas: readonly ConfigEmpresa[];
-  /** Módulos ativos além do núcleo (seção 5). Nesta versão, só o núcleo está implementado. */
+  /**
+   * Módulos ativos além do núcleo (seção 5). `cadeia_produtiva` exige um preset com o bloco `cadeia`;
+   * `financas` ainda não está implementado.
+   */
   modulos?: readonly ModuloId[];
 }
 
-export const MODULOS_IMPLEMENTADOS: readonly ModuloId[] = ["nucleo"];
+export const MODULOS_IMPLEMENTADOS: readonly ModuloId[] = ["nucleo", "cadeia_produtiva"];
 
 export class ConfigInvalida extends Error {
   constructor(mensagem: string) {
@@ -50,6 +54,17 @@ export class ConfigInvalida extends Error {
 /** Id sequencial com prefixo e ao menos 2 dígitos: `emp_01`, `emp_12`, `emp_123`. */
 export function idSequencial(prefixo: string, numero: number): string {
   return `${prefixo}_${String(numero).padStart(2, "0")}`;
+}
+
+function novaMateriaPrima(): EstadoMateriaPrima {
+  return { estoque: estoqueVazio(), ofertaAtacado: null, diasCheio: 0, serie: [] };
+}
+
+/** Matérias-primas que alguma atividade produz, em ordem alfabética. */
+function materiasPrimasDaCadeia(p: ParametrosResolvidos): string[] {
+  const ids = new Set<string>();
+  for (const a of p.cadeia?.atividades ?? []) for (const x of a.produz) ids.add(x.produto);
+  return [...ids].sort();
 }
 
 function novaOferta(produto: string, p: ParametrosResolvidos): EstadoOferta {
@@ -76,6 +91,9 @@ export function criarPartida(config: ConfigPartida): EstadoPartida {
     if (!modulos.includes(m)) modulos.push(m);
   }
   if (config.semente.length === 0) throw new ConfigInvalida("semente vazia");
+  if (modulos.includes("cadeia_produtiva") && config.preset.cadeia === undefined) {
+    throw new ConfigInvalida(`módulo "cadeia_produtiva" exige um preset com o bloco "cadeia" (${config.preset.id} não tem)`);
+  }
   if (config.empresas.length === 0) throw new ConfigInvalida("a partida precisa de pelo menos uma empresa");
 
   const parametros = resolverPreset(config.preset, config.semente);
@@ -88,6 +106,7 @@ export function criarPartida(config: ConfigPartida): EstadoPartida {
     fatorCiclo: parametros.fatorCicloInicial,
   }));
 
+  const comCadeia = modulos.includes("cadeia_produtiva");
   const produtosVarejo = parametros.produtos.filter((p) => p.varejo !== null).map((p) => p.id);
   const pv = parametros.pontoDeVenda;
 
@@ -117,6 +136,8 @@ export function criarPartida(config: ConfigPartida): EstadoPartida {
       ofertas: produtosVarejo.map((p) => novaOferta(p, parametros)),
       pontosDeVenda,
       fabricas: [],
+      fazendas: [],
+      materiasPrimas: comCadeia ? Object.fromEntries(materiasPrimasDaCadeia(parametros).map((p) => [p, novaMateriaPrima()])) : {},
       contabil: {
         capitalSocial,
         lucrosAcumulados: 0,

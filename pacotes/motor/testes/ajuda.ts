@@ -7,6 +7,7 @@ import {
   balanco,
   type ConfigPartida,
   criarPartida,
+  DIAS_DA_SERIE_DE_ESTOQUE,
   type Decisao,
   type EntradasTick,
   type EstadoEmpresa,
@@ -72,7 +73,8 @@ export function numerosInvalidos(valor: unknown, caminho = "$"): string[] {
  * - caixa final − caixa inicial = soma dos lançamentos da empresa (exato); caixa nunca negativo;
  * - ativo = passivo + patrimônio líquido (exato);
  * - dinheiro em centavos inteiros; nenhum número inválido no estado;
- * - estoques não negativos; qualidade, reconhecimento e fidelidade dentro dos limites;
+ * - estoques (de varejo e de matéria-prima) não negativos; qualidade, reconhecimento e fidelidade dentro dos limites;
+ * - camada 3: matérias-primas em ordem alfabética, séries de estoque limitadas, fazendas com depreciação coerente;
  * - participações das ofertas ativas somam 1 por (mercado, produto).
  */
 export function verificarInvariantes(anterior: EstadoPartida, resultado: ResultadoTick): void {
@@ -96,6 +98,25 @@ export function verificarInvariantes(anterior: EstadoPartida, resultado: Resulta
       tick: estado.tick,
       ativo: b.passivoTotal + b.patrimonioLiquido,
     });
+
+    // Camada 3: estoques de matéria-prima e fazendas.
+    expect(Object.keys(e.materiasPrimas)).toEqual(Object.keys(e.materiasPrimas).sort());
+    for (const [produto, m] of Object.entries(e.materiasPrimas)) {
+      const onde = { empresa: e.id, produto };
+      expect({ ...onde, ok: m.estoque.quantidade >= 0 }).toEqual({ ...onde, ok: true });
+      expect({ ...onde, ok: Number.isInteger(m.estoque.valor) && m.estoque.valor >= 0 }).toEqual({ ...onde, ok: true });
+      expect({ ...onde, ok: m.estoque.qualidade >= 0 && m.estoque.qualidade <= 100 + 1e-9 }).toEqual({ ...onde, ok: true });
+      expect({ ...onde, ok: Number.isInteger(m.diasCheio) && m.diasCheio >= 0 }).toEqual({ ...onde, ok: true });
+      expect({ ...onde, ok: m.serie.length <= DIAS_DA_SERIE_DE_ESTOQUE && m.serie.every((x) => x >= 0 && x <= 1) }).toEqual({ ...onde, ok: true });
+      if (m.ofertaAtacado) expect({ ...onde, ok: Number.isInteger(m.ofertaAtacado.preco) && m.ofertaAtacado.preco > 0 && m.ofertaAtacado.quantidadeMensal >= 0 }).toEqual({ ...onde, ok: true });
+    }
+    for (const fz of e.fazendas) {
+      const onde = { empresa: e.id, fazenda: fz.id };
+      expect({ ...onde, ok: Number.isInteger(fz.custo) && fz.custo >= 0 }).toEqual({ ...onde, ok: true });
+      expect({ ...onde, ok: fz.depreciacaoAcumulada >= 0 && fz.depreciacaoAcumulada <= fz.custo }).toEqual({ ...onde, ok: true });
+      expect({ ...onde, ok: fz.experiencia >= 0 && fz.producaoMensal >= 0 }).toEqual({ ...onde, ok: true });
+      expect({ ...onde, ok: estado.parametros.cadeia?.atividades.some((a) => a.id === fz.atividade) === true }).toEqual({ ...onde, ok: true });
+    }
 
     for (const o of e.ofertas) {
       expect(o.estoque.quantidade).toBeGreaterThanOrEqual(0);

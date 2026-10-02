@@ -58,7 +58,7 @@ export function etapaDepreciacaoEIR(ctx: Contexto): void {
   if (!ctx.fimDoMes) return;
   const f = ctx.estado.parametros.financeiro;
   for (const empresa of ctx.estado.empresas) {
-    for (const ativo of [...empresa.pontosDeVenda, ...empresa.fabricas]) {
+    for (const ativo of [...empresa.pontosDeVenda, ...empresa.fabricas, ...empresa.fazendas]) {
       if (ativo.operaDesdeTick > ctx.tick) continue;
       const quota = quotaDeDepreciacao(ativo);
       if (quota <= 0) continue;

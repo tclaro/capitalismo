@@ -26,8 +26,10 @@ export const CONTAS_DRE: readonly ContaDRE[] = [
   "publicidade",
   "pd",
   "custo_fixo_fabrica",
+  "custo_fixo_fazenda",
   "custo_fixo_ponto_de_venda",
   "armazenagem",
+  "perda_de_estoque",
   "depreciacao",
   "baixa_de_ativos",
   "juros",
@@ -96,9 +98,10 @@ function valorLiquido(a: EstadoAtivo): Centavos {
 export function balanco(empresa: EstadoEmpresa, tick: number): Balanco {
   let estoques = 0;
   for (const o of empresa.ofertas) estoques += o.estoque.valor;
+  for (const m of Object.values(empresa.materiasPrimas)) estoques += m.estoque.valor;
   let imobilizadoLiquido = 0;
   let obrasEmAndamento = 0;
-  for (const a of [...empresa.pontosDeVenda, ...empresa.fabricas]) {
+  for (const a of [...empresa.pontosDeVenda, ...empresa.fabricas, ...empresa.fazendas]) {
     if (a.operaDesdeTick <= tick) imobilizadoLiquido += valorLiquido(a);
     else obrasEmAndamento += a.custo;
   }

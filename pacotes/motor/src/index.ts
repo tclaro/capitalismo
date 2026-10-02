@@ -53,3 +53,4 @@ export {
 } from "./simulacao";
 export { custoFabricado, custoPronto, paybackDaFabrica } from "./robos/comum";
 export { clonarEstado, ETAPAS, passo, passoMutavel } from "./passo";
+export { migrarEstado } from "./migracao";

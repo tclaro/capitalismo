@@ -7,7 +7,7 @@
  */
 import type { Database } from "bun:sqlite";
 import { ehFimDoMes } from "@simulador/compartilhado";
-import { calcularPontuacao, type EstadoPartida, type FechamentoMensal, type ResultadoTick, VERSAO_MOTOR } from "@simulador/motor";
+import { calcularPontuacao, type EstadoPartida, type FechamentoMensal, migrarEstado, type ResultadoTick, VERSAO_MOTOR } from "@simulador/motor";
 import type { AcumuladorSemanal, RegistroSemanal } from "../sala/historico";
 import type { DadosSala, DecisaoNaFila, Resposta, Sala } from "../sala/sala";
 
@@ -146,7 +146,7 @@ export class Repositorio {
         (r) => [r.id_comando, JSON.parse(r.resposta_json)] as [string, Resposta],
       );
       return {
-        dados: { ...meta, estado: JSON.parse(atual.estado_json), acumulador: JSON.parse(atual.acumulador_json), fila, fechamentos },
+        dados: { ...meta, estado: migrarEstado(JSON.parse(atual.estado_json)), acumulador: JSON.parse(atual.acumulador_json), fila, fechamentos },
         comandos,
       };
     });
@@ -165,7 +165,7 @@ export class Repositorio {
   /** Estado de referência de um mês (0 = início da partida). */
   estadoDoMes(salaId: string, mes: number): EstadoPartida | null {
     const r = this.db.query("SELECT estado_json FROM estado_fim_mes WHERE sala_id = ? AND mes = ?").get(salaId, mes) as { estado_json: string } | null;
-    return r ? JSON.parse(r.estado_json) : null;
+    return r ? migrarEstado(JSON.parse(r.estado_json)) : null;
   }
 
   /** Entradas gravadas de cada tick, em ordem (replay). */

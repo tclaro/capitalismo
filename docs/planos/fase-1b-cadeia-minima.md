@@ -39,7 +39,7 @@ Fora desta fase: calendário agrícola, extração, fábricas de semiacabados, r
 | 13 | Balanço | `estoques` passa a incluir `estoquesMP`; `imobilizadoLiquido` e `obrasEmAndamento` incluem as fazendas; depreciação linear como nas fábricas. A identidade ativo = passivo + patrimônio líquido continua exata. |
 | 14 | Robôs | Inalterados. Continuam só na camada 1, comprando do fornecedor externo. Carne e frango entram para eles como compra pronta. |
 | 15 | Matérias-primas no preset | Mantêm o `fornecedor` (exigência de `validarPreset`); ele é o teto de preço. |
-| 16 | Evolução do estoque | A regra "3 dias seguidos em 100%" fica **no motor**, para ser determinística e testada: cada estoque de fazenda e de fábrica tem um contador `diasCheio` (zera quando sai de 100%) e uma série curta das últimas 30 frações da capacidade, no estado da empresa (algumas dezenas de números por estoque). A visão entrega as duas coisas; a tela só pinta. O aviso discreto sai na primeira vez que o contador chega a 3. Proposta a confirmar na entrega 2, comparando com calcular tudo no servidor. |
+| 16 | Evolução do estoque | A regra "3 dias seguidos em 100%" fica **no motor**, para ser determinística e testada: cada estoque de fazenda e de fábrica tem um contador `diasCheio` (zera quando sai de 100%) e uma série curta das últimas 30 frações da capacidade, no estado da empresa (algumas dezenas de números por estoque). A visão entrega as duas coisas; a tela só pinta. O aviso discreto sai na primeira vez que o contador chega a 3. **Situação (entrega 2):** o estado já guarda `diasCheio` e `serie` por matéria-prima (`EstadoMateriaPrima`), com a constante `DIAS_CHEIO_PARA_ALERTA = 3`; a atualização vem com a produção (entrega 3). **Em aberto:** as fábricas não têm capacidade de estoque no motor (o estoque de produto acabado cresce sem teto, só com custo de armazenagem), então "100%" para o produto das fábricas pede um parâmetro novo (por exemplo, dias de produção que cabem no estoque); decidir na entrega 3 ou 4. |
 
 ## 4. Mudanças por pacote
 
@@ -82,7 +82,7 @@ Fora desta fase: calendário agrícola, extração, fábricas de semiacabados, r
 | # | Entrega | Verificação |
 |---|---|---|
 | 1 | **Catálogo e preset**: bloco de parâmetros da cadeia, `cadeia/minima`, validações. **Concluída em 02/10/2026** (o preset fica fora da lista de salas até o módulo existir) | Testes do catálogo; `validarPreset`; o golden do núcleo não muda |
-| 2 | **Estado do motor**: tipos, `estoquesMP`, fazendas, versão 2 com migração, módulo aceito, balanço, depreciação, invariantes de teste | Invariantes existentes mais balanço fechado com fazendas; migração v1→v2 |
+| 2 | **Estado do motor**: tipos, `materiasPrimas`, fazendas, versão 2 com migração, módulo aceito, balanço, depreciação, invariantes de teste. **Concluída em 02/10/2026** (sem comportamento de fazenda ainda: produção, decisões e atacado vêm nas entregas 3 a 6) | Invariantes existentes mais balanço fechado com fazendas; migração v1→v2 |
 | 3 | **Fazendas**: construir, ajustar, produzir (passo 4), coprodutos, qualidade por experiência | Testes unitários e de propriedade (estoque e valor conservados) |
 | 4 | **Origem dos insumos**: fábrica e carne/frango a partir do estoque próprio, completando com o fornecedor | Custo e qualidade esperados em casos calculados à mão |
 | 5 | **Atacado e cooperativa** (passo 5; a cooperativa só compra por ordem da equipe) | Conservação do dinheiro entre empresas por tick; resultado igual com a ordem das empresas trocada; rateio proporcional |

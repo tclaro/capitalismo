@@ -11,7 +11,19 @@ import type { Centavos, Estoque } from "./dinheiro";
 import type { PesosNotaResolvidos } from "./formulas/nota";
 import type { InsumoReceita, NivelProduto, ProducaoDaAtividade, TipoDeFazenda } from "./preset";
 
-export const VERSAO_ESTADO = 1;
+/**
+ * Versão do formato do estado gravado. Sobe quando um campo é acrescentado ou muda de sentido;
+ * `migrarEstado` leva estados antigos à versão atual.
+ *
+ * - 2: camada 3 (cadeia mínima): `parametros.cadeia`, `fazendas`, `materiasPrimas` e as contas
+ *   `custo_fixo_fazenda` e `perda_de_estoque` da DRE.
+ */
+export const VERSAO_ESTADO = 2;
+
+/** Tamanho da série de evolução do estoque guardada por matéria-prima (últimos dias, seção 6.16). */
+export const DIAS_DA_SERIE_DE_ESTOQUE = 30;
+/** Dias seguidos com o estoque cheio (100% da capacidade) a partir dos quais a tela avisa em vermelho. */
+export const DIAS_CHEIO_PARA_ALERTA = 3;
 
 /** Dias de um mês de jogo. Prazos e capacidades "por dia" são convertidos para ticks com base nele. */
 export const DIAS_POR_MES = 30;
@@ -192,6 +204,42 @@ export interface EstadoFabrica extends EstadoAtivo {
 }
 
 /**
+ * Fazenda (camada 3): lavoura ou pecuária com uma atividade por vez. Depreciação e obra seguem o
+ * ativo; a produção e a qualidade ficam em `EstadoMateriaPrima` (estoque) e `experiencia`.
+ */
+export interface EstadoFazenda extends EstadoAtivo {
+  /** Id da atividade em `parametros.cadeia.atividades`. */
+  atividade: string;
+  /** Experiência acumulada, em meses de produção à capacidade nominal (qualidade cresce com ela). */
+  experiencia: number;
+  /** Troca de atividade em curso: a fazenda não produz até este tick (inclusive). `null` = sem conversão. */
+  conversaoAteTick: number | null;
+  /** Decisão vigente: unidades-base por mês (a do produto principal). */
+  producaoMensal: number;
+}
+
+/** Oferta de uma matéria-prima no atacado entre equipes (preço e quantidade podem mudar a qualquer dia). */
+export interface OfertaAtacado {
+  preco: Centavos;
+  quantidadeMensal: number;
+}
+
+/**
+ * Estoque de uma matéria-prima da empresa (produção das fazendas e compras no atacado), com custo
+ * médio e qualidade como nas ofertas de varejo. Existe uma entrada por matéria-prima que alguma
+ * atividade do preset produz, criada com a partida e nunca removida.
+ */
+export interface EstadoMateriaPrima {
+  estoque: Estoque;
+  /** `null` = não oferece no atacado. */
+  ofertaAtacado: OfertaAtacado | null;
+  /** Dias seguidos com o estoque em 100% da capacidade (zera ao sair de 100%). */
+  diasCheio: number;
+  /** Fração da capacidade (0 a 1) ao fim de cada um dos últimos dias, a mais recente por último. */
+  serie: number[];
+}
+
+/**
  * Contas da DRE. Insumos e mão de obra da fabricação entram no custo do estoque e chegam à DRE
  * pelo CPV, na venda (custeio por competência); o custo fixo da fábrica é despesa do período.
  */
@@ -201,8 +249,10 @@ export type ContaDRE =
   | "publicidade"
   | "pd"
   | "custo_fixo_fabrica"
+  | "custo_fixo_fazenda"
   | "custo_fixo_ponto_de_venda"
   | "armazenagem"
+  | "perda_de_estoque"
   | "depreciacao"
   | "baixa_de_ativos"
   | "juros"
@@ -263,12 +313,16 @@ export interface EstadoEmpresa {
   ofertas: EstadoOferta[];
   pontosDeVenda: EstadoAtivo[];
   fabricas: EstadoFabrica[];
+  /** Camada 3: vazio se o módulo `cadeia_produtiva` está desligado. */
+  fazendas: EstadoFazenda[];
+  /** Camada 3: estoque por matéria-prima (chave = id do produto, em ordem alfabética); `{}` se desligado. */
+  materiasPrimas: Record<string, EstadoMateriaPrima>;
   contabil: EstadoContabil;
   /** Pontos de penalidade acumulados (princípio 7). */
   penalidadePontuacao: number;
   /** Robô: estratégia, intensidade sorteada e gerador próprio. */
   robo: EstadoRobo | null;
-  /** Próximo número sequencial para ids de ativos (pdv_01, fab_01, ...). */
+  /** Próximo número sequencial para ids de ativos (pdv_01, fab_01, faz_01, ...). */
   proximoAtivo: number;
 }
 

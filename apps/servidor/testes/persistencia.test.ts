@@ -99,6 +99,51 @@ describe("gravação e retomada", () => {
     db2.close();
   });
 
+  test("sala gravada pela versão 1 do estado volta migrada: campos novos, mesma partida, e continua jogando", () => {
+    const caminho = join(pastaTemporaria(), "v1.db");
+    const { db, sala } = salaGravada(caminho);
+    const esperado = JSON.stringify(sala.estado);
+    sala.pararRelogio();
+
+    /** Reescreve o estado gravado como a versão 1 o gravaria (sem os campos da camada 3). */
+    const comoVersao1 = (json: string): string => {
+      const e = JSON.parse(json) as Record<string, any>;
+      e.versaoEstado = 1;
+      delete e.parametros.cadeia;
+      for (const emp of e.empresas) {
+        delete emp.fazendas;
+        delete emp.materiasPrimas;
+        for (const dre of [emp.contabil.mesAtual.dre, emp.contabil.ultimoFechamento?.dre]) {
+          if (!dre) continue;
+          delete dre.custo_fixo_fazenda;
+          delete dre.perda_de_estoque;
+        }
+      }
+      return JSON.stringify(e);
+    };
+    for (const tabela of ["estado_atual", "estado_fim_mes"]) {
+      const linhas = db.query(`SELECT rowid AS id, estado_json FROM ${tabela}`).all() as { id: number; estado_json: string }[];
+      for (const l of linhas) db.query(`UPDATE ${tabela} SET estado_json = ? WHERE rowid = ?`).run(comoVersao1(l.estado_json), l.id);
+    }
+    expect(JSON.parse((db.query("SELECT estado_json FROM estado_atual").get() as { estado_json: string }).estado_json).versaoEstado).toBe(1);
+    db.close();
+
+    const db2 = abrirBanco(caminho);
+    const repositorio = new Repositorio(db2);
+    const relogio2 = new AgendadorFalso();
+    const [retomada] = carregarSalas(repositorio, relogio2, () => new ObservadorPersistente(repositorio));
+    expect(JSON.stringify(retomada!.estado)).toBe(esperado);
+    expect(retomada!.estado.versaoEstado).toBe(2);
+    // O estado de referência de um mês também sai migrado (usado no replay).
+    expect(repositorio.estadoDoMes("sala_p", 0)!.versaoEstado).toBe(2);
+    // E a partida segue: com o relógio andando, os ticks avançam e o estado continua na versão atual.
+    retomada!.comandoRelogio(cmd(), 42, "retomar");
+    relogio2.avancar(18_000);
+    expect(retomada!.estado.tick).toBeGreaterThan(42);
+    expect(retomada!.estado.versaoEstado).toBe(2);
+    db2.close();
+  });
+
   test("comandos continuam idempotentes depois do reinício", () => {
     const caminho = join(pastaTemporaria(), "d.db");
     const { db, sala, ana, pendente } = salaGravada(caminho);

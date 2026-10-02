@@ -4,6 +4,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import type { VisaoAluno } from "@simulador/compartilhado";
+import { CONTAS_DRE, type FechamentoMensal, lucroAntesIR } from "../../../pacotes/motor/src";
 import fc from "fast-check";
 import { coresLivres, decisoesDoRascunho, decisoesEfetivas, decomporNota, lerQuantidade, linhasDRE, type Rascunho, textoDoStatusAluno } from "../src/aluno/regras";
 import { LEITE, salaDeExemplo } from "./fixtures";
@@ -162,6 +163,32 @@ describe("relatórios e entrada", () => {
       expect(valor("Lucro bruto")[i]).toBe(valor("Receita de vendas")[i]! + valor("(−) Custo dos produtos vendidos")[i]!);
     }
     expect(valor("Receita de vendas")[0]).toBeGreaterThan(0);
+  });
+
+  test("DRE: toda conta do motor aparece em alguma linha (inclusive as da camada 3) e fechamentos antigos, sem essas contas, viram zero", () => {
+    const dre = Object.fromEntries(CONTAS_DRE.map((c, i) => [c, (i + 1) * 100])) as FechamentoMensal["dre"];
+    const lair = lucroAntesIR(dre);
+    const completo: FechamentoMensal = {
+      mes: 1,
+      dre,
+      lucroAntesIR: lair,
+      lucroLiquido: lair - dre.ir,
+      fluxo: { operacional: 0, investimento: 0, financiamento: 0 },
+      balanco: {} as FechamentoMensal["balanco"],
+    };
+    const linhas = linhasDRE([completo]);
+    const despesas = linhas.filter((l) => l.rotulo.startsWith("(−)") && l.rotulo !== "(−) Imposto de renda").reduce((t, l) => t + l.valores[0]!, 0);
+    // Com todas as contas preenchidas, receita + despesas das linhas = lucro antes do IR: nenhuma conta ficou sem linha.
+    expect(dre.receita + despesas).toBe(lair);
+    expect(linhas.map((l) => l.rotulo)).toEqual(expect.arrayContaining(["(−) Custo fixo das fazendas", "(−) Perda de estoque"]));
+
+    // Fechamento gravado antes da camada 3: as contas novas não existem no objeto.
+    const { custo_fixo_fazenda: _a, perda_de_estoque: _b, ...antigo } = dre;
+    const velho = { ...completo, dre: antigo as unknown as FechamentoMensal["dre"] };
+    const l2 = linhasDRE([velho]);
+    expect(Math.abs(l2.find((l) => l.rotulo === "(−) Custo fixo das fazendas")!.valores[0]!)).toBe(0);
+    expect(Math.abs(l2.find((l) => l.rotulo === "(−) Perda de estoque")!.valores[0]!)).toBe(0);
+    expect(l2.every((l) => l.valores.every((v) => Number.isFinite(v)))).toBe(true);
   });
 
   test("cores livres: as do mercado da vaga, sem as já escolhidas", () => {
