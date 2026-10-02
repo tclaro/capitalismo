@@ -68,6 +68,15 @@
   --cor-seg-marca: #8d6cc0;
   --cor-seg-preco: #2f9a8a;
 
+  /* Cadeia produtiva: uma cor por tipo de instalação (cartões e fios), sem relação com as cores das equipes. */
+  --cor-fazenda: #3c7a2a;
+  --cor-fabrica: #2c5ca6;
+  --cor-loja: #8d4fa0;
+  --cor-externo: #8a5d00;
+  --cor-coop: #2f7f8f;
+  --cor-vazio: #dde2ea;
+  --cor-fio: #7d8aa0;
+
   color-scheme: light;
 }
 
@@ -96,6 +105,14 @@
     --cor-seg-marca: #b497e6;
     --cor-seg-preco: #4fc2b0;
     --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --cor-fazenda: #7cc466;
+    --cor-fabrica: #7fa8eb;
+    --cor-loja: #c79be0;
+    --cor-externo: #e3a84a;
+    --cor-coop: #5fc3d4;
+    --cor-vazio: #2c333d;
+    --cor-fio: #6d7b92;
+
     --sombra-2: 0 4px 12px rgb(0 0 0 / 0.5);
     color-scheme: dark;
   }
@@ -125,6 +142,13 @@
   --cor-seg-marca: #b497e6;
   --cor-seg-preco: #4fc2b0;
   --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --cor-fazenda: #7cc466;
+  --cor-fabrica: #7fa8eb;
+  --cor-loja: #c79be0;
+  --cor-externo: #e3a84a;
+  --cor-coop: #5fc3d4;
+  --cor-vazio: #2c333d;
+  --cor-fio: #6d7b92;
   --sombra-2: 0 4px 12px rgb(0 0 0 / 0.5);
   color-scheme: dark;
 }

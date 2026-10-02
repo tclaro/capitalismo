@@ -237,6 +237,13 @@ describe("formatos de largura estável", () => {
     expect(quantidadeCom(0, "par")).toBe("0 pares");
     expect(quantidadeCom(12_345, "garrafa")).toBe("12.345 garrafas");
   });
+
+  test("abreviações de unidade (kg, g, L) não variam no plural", () => {
+    expect(["kg", "g", "l", "ml", "KG"].map(plural)).toEqual(["kg", "g", "l", "ml", "KG"]);
+    expect(quantidadeCom(300, "kg")).toBe("300 kg");
+    expect(quantidadeCom(1, "kg")).toBe("1 kg");
+    expect(plural("quilo")).toBe("quilos"); // só as abreviações
+  });
 });
 
 // Garantia de tipo: as fixtures produzem a visão real.

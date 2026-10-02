@@ -296,6 +296,7 @@ export function reaisDoEixo(centavos: number): string {
 
 /** Plural simples da unidade do produto: "garrafa" → "garrafas", "par" → "pares", "unidade" → "unidades". */
 export function plural(unidade: string): string {
+  if (/^(kg|g|l|ml)$/i.test(unidade)) return unidade; // abreviações não variam
   if (/[rsz]$/.test(unidade)) return `${unidade}es`;
   if (/m$/.test(unidade)) return `${unidade.slice(0, -1)}ns`;
   return `${unidade}s`;

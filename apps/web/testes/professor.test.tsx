@@ -3,7 +3,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { prepararDom, WebSocketFalso } from "./dom";
-import { LEITE, salaDeExemplo } from "./fixtures";
+import { LEITE, salaDaCadeia, salaDeExemplo } from "./fixtures";
 
 const dom = prepararDom();
 
@@ -188,6 +188,34 @@ describe("painel da sala", () => {
     expect(empresas.textContent).toContain(reais(alfa.caixa));
     expect(empresas.textContent).toContain("Leite engarrafado");
     expect(empresas.textContent).toContain("R$ 5,80");
+  });
+
+  test("sala da cadeia: coluna de fazendas e estoque de matéria-prima por equipe; sala comum não tem nada disso", async () => {
+    const c = salaDaCadeia(45);
+    Object.assign(c.sala.estado.empresas[0]!.materiasPrimas.leite!.estoque, { quantidade: 777, valor: 123_457, qualidade: 60 });
+    const r = await painel(c.visao());
+    const empresas = r.querySelector("section[aria-label=Empresas]")!;
+    const cabecalho = [...empresas.querySelectorAll("table")[0]!.querySelectorAll("th")].map((th) => th.textContent);
+    expect(cabecalho.at(-1)).toBe("Fazendas");
+    const alfa = [...empresas.querySelectorAll("table")[0]!.querySelectorAll("tbody tr")].find((tr) => tr.textContent!.includes("Alfa"))!;
+    expect([...alfa.querySelectorAll("td")].at(-1)!.textContent).toBe("2");
+    const estoque = [...empresas.querySelectorAll("details")].find((d) => d.querySelector("summary")!.textContent === "Estoque de matéria-prima por equipe")!;
+    const linhas = [...estoque.querySelectorAll("tbody tr")].map((tr) => [...tr.querySelectorAll("td")].map((td) => td.textContent!.replace(/ /g, " ")));
+    const leite = linhas.find((l) => l[1] === "Leite")!;
+    expect(leite[0]).toContain("Alfa");
+    expect(leite[2]).toBe("777 litros");
+    expect(leite[3]).toBe("R$ 1.234,57");
+    // O estoque só aparece de quem tem: a Beta não tem nenhuma linha.
+    expect(linhas.some((l) => l[0]!.includes("Beta"))).toBe(false);
+  });
+
+  test("sala sem a cadeia: sem coluna de fazendas nem tabela de matérias-primas", async () => {
+    const s = salaDeExemplo();
+    s.jogar(3);
+    const r = await painel(s.visao());
+    const empresas = r.querySelector("section[aria-label=Empresas]")!;
+    expect([...empresas.querySelectorAll("th")].some((th) => th.textContent === "Fazendas")).toBe(false);
+    expect([...empresas.querySelectorAll("summary")].some((x) => x.textContent === "Estoque de matéria-prima por equipe")).toBe(false);
   });
 
   test("encerrar pede confirmação na página; cancelar não envia nada", async () => {

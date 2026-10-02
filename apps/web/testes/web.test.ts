@@ -144,6 +144,12 @@ describe("tema: contraste WCAG AA", () => {
     ["cor-lucro", "cor-fundo-lucro", 4.5],
     ["cor-prejuizo", "cor-fundo-prejuizo", 4.5],
     ["cor-alerta", "cor-fundo-alerta", 4.5],
+    // Cadeia: cores das instalações (usadas também em rótulos de texto).
+    ["cor-fazenda", "cor-superficie", 4.5],
+    ["cor-fabrica", "cor-superficie", 4.5],
+    ["cor-loja", "cor-superficie", 4.5],
+    ["cor-externo", "cor-superficie", 4.5],
+    ["cor-coop", "cor-superficie", 4.5],
     ["cor-texto", "cor-borda", 3],
     ["cor-foco", "cor-fundo", 3],
     ["cor-foco", "cor-superficie", 3],

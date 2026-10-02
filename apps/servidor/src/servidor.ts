@@ -74,12 +74,11 @@ const TESTES_GUARDADOS = 200;
 const DURACAO_WS_TESTE_MS = 20_000;
 
 /**
- * Presets oferecidos na criação da sala (os de teste só por API). Os que trazem o bloco `cadeia` ficam
- * de fora até a tela da cadeia existir (fase 1b, entrega 8): o motor, o protocolo e as projeções já
- * funcionam (a sala liga o módulo sozinha), mas sem a tela o aluno não vê nem comanda as fazendas.
+ * Presets oferecidos na criação da sala (os de teste só por API). O `cadeia/minima` entrou com a tela da
+ * cadeia (fase 1b, entrega 8); seus números ainda são provisórios até a calibração (entrega 9).
  */
 const PRESETS_JOGAVEIS = Object.values(PRESETS)
-  .filter((p) => !p.id.startsWith("teste/") && p.cadeia === undefined)
+  .filter((p) => !p.id.startsWith("teste/"))
   .map((p) => ({ id: p.id, nome: p.nome }));
 
 export interface DadosConexao {

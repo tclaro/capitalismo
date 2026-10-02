@@ -12,6 +12,7 @@ import { Aviso, Cabecalho, Carregando } from "../componentes/base";
 import { formatarVelocidade } from "../formato";
 import { explicarRecusa } from "../professor/regras";
 import type { ResultadoDoEnvio } from "./CampoDecisao";
+import { type AbaDaCadeia, VistaDaCadeia } from "./cadeia/Vista";
 import { ConsoleDoProduto } from "./Console";
 import { EntrarNaSala } from "./Entrar";
 import { useAvisosAcumulados, useHistorico } from "./ganchos";
@@ -114,6 +115,16 @@ function TelaDeJogo({
   const [selecionado, setSelecionado] = useState(produtos[0]?.id ?? "");
   const sel = produtos.some((p) => p.id === selecionado) ? selecionado : (produtos[0]?.id ?? "");
   const [janela, setJanela] = useState<JanelaAberta>(null);
+  // Com o módulo da cadeia ativo, a visão da cadeia substitui o console por produto (botões no HUD alternam).
+  const temCadeia = v.visao.cadeia !== null;
+  const [vista, setVista] = useState<"cadeia" | "produtos">(temCadeia ? "cadeia" : "produtos");
+  const [instalacao, setInstalacao] = useState("");
+  const [abaDaCadeia, setAbaDaCadeia] = useState<AbaDaCadeia>("instalacao");
+  const naCadeia = temCadeia && vista === "cadeia";
+  const irParaProdutos = (produto?: string) => {
+    if (produto) setSelecionado(produto);
+    setVista("produtos");
+  };
   const historico = useHistorico(codigo, semanaGlobal(r.tick, r.ticksPorMes));
   const avisos = useAvisosAcumulados(r.tick, v.avisos);
   const [enviandoPronto, setEnviandoPronto] = useState(false);
@@ -155,7 +166,7 @@ function TelaDeJogo({
     const agora = produtosEsgotados(v);
     for (const p of novosEsgotados(esgotados.current, agora)) {
       const nome = produtos.find((x) => x.id === p)?.nome ?? p;
-      notificar(`${nome} esgotou: há clientes sem produto. Ajuste a compra ou a produção.`, { rotulo: "Ver", executar: () => setSelecionado(p) });
+      notificar(`${nome} esgotou: há clientes sem produto. Ajuste a compra ou a produção.`, { rotulo: "Ver", executar: () => irParaProdutos(p) });
     }
     esgotados.current = agora;
     const pos = posicaoNoRanking(v);
@@ -179,11 +190,13 @@ function TelaDeJogo({
   // Atalhos: 1–9 produtos, R resultados, G gráficos, P pronto (modo rodada).
   const atalhos = useRef<(e: KeyboardEvent) => void>(() => {});
   atalhos.current = (e) => {
-    if (janela !== null || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (janela !== null || e.ctrlKey || e.metaKey || e.altKey || document.querySelector(".j-veu")) return;
     const alvo = e.target as Element | null;
     if (alvo instanceof Element && alvo.matches("input, textarea, select")) return;
     const n = Number(e.key);
-    if (Number.isInteger(n) && n >= 1 && n <= Math.min(9, produtos.length)) {
+    if (temCadeia && (e.key === "c" || e.key === "C")) setVista("cadeia");
+    else if (temCadeia && (e.key === "v" || e.key === "V")) setVista("produtos");
+    else if (!naCadeia && Number.isInteger(n) && n >= 1 && n <= Math.min(9, produtos.length)) {
       setSelecionado(produtos[n - 1]!.id);
       e.preventDefault();
     } else if (e.key === "r" || e.key === "R") setJanela("resultados");
@@ -211,7 +224,7 @@ function TelaDeJogo({
 
   return (
     <div className="j-app">
-      <Hud v={v} instantaneo={instantaneo} aoSair={aoSair} />
+      <Hud v={v} instantaneo={instantaneo} aoSair={aoSair} vistas={temCadeia ? { atual: vista, aoMudar: setVista } : undefined} />
       {(instantaneo.motivo || instantaneo.erro || instantaneo.estado === "reconectando") && (
         <div className="j-faixa-conexao" role="alert">
           {instantaneo.motivo ? (
@@ -234,19 +247,30 @@ function TelaDeJogo({
           )}
         </div>
       )}
-      <main className="j-principal">
-        <nav className="j-coluna" aria-label="Produtos e empresa">
-          <CartoesDosProdutos v={v} selecionado={sel} aoSelecionar={setSelecionado} mercado={historico.mercado} />
-          <BlocoDaEmpresa v={v} comandar={comandar} />
-        </nav>
-        <section className={`j-console${faixa ? " com-faixa" : ""}${!r.podeEditar ? " travado" : ""}`} aria-label="Produto escolhido">
-          {faixa && (
-            <div className="j-faixa" role="status">
-              {faixa}
-            </div>
-          )}
-          {sel && <ConsoleDoProduto key={sel} v={v} produto={sel} comandar={comandar} ultimoPreco={ultimoPreco.current} mercado={historico.mercado} trocou />}
-        </section>
+      {naCadeia && faixa && (
+        <div className="j-faixa" role="status">
+          {faixa}
+        </div>
+      )}
+      <main className={`j-principal${naCadeia ? " cadeia" : ""}`}>
+        {naCadeia ? (
+          <VistaDaCadeia v={v} comandar={comandar} selecionada={instalacao} aoSelecionar={setInstalacao} aba={abaDaCadeia} aoMudarAba={setAbaDaCadeia} aoIrParaProdutos={irParaProdutos} bloqueada={janela !== null} />
+        ) : (
+          <>
+            <nav className="j-coluna" aria-label="Produtos e empresa">
+              <CartoesDosProdutos v={v} selecionado={sel} aoSelecionar={setSelecionado} mercado={historico.mercado} />
+              <BlocoDaEmpresa v={v} comandar={comandar} />
+            </nav>
+            <section className={`j-console${faixa ? " com-faixa" : ""}${!r.podeEditar ? " travado" : ""}`} aria-label="Produto escolhido">
+              {faixa && (
+                <div className="j-faixa" role="status">
+                  {faixa}
+                </div>
+              )}
+              {sel && <ConsoleDoProduto key={sel} v={v} produto={sel} comandar={comandar} ultimoPreco={ultimoPreco.current} mercado={historico.mercado} trocou />}
+            </section>
+          </>
+        )}
         <aside className="j-coluna" aria-label="Mercado">
           <RankingDoMercado v={v} />
           <ListaDeAvisos v={v} avisos={avisos} />
@@ -257,9 +281,30 @@ function TelaDeJogo({
           {r.modo === "rodada" ? `Modo rodada: o mês para no dia ${r.ticksPorMes} para vocês decidirem · ${formatarVelocidade(r.segundosPorTick)}` : `Modo contínuo · ${formatarVelocidade(r.segundosPorTick)} · as mudanças valem a partir do dia seguinte`}
         </span>
         <span className="j-atalhos" aria-hidden="true">
-          <span>
-            <kbd>1</kbd>–<kbd>{Math.min(9, produtos.length)}</kbd> produtos
-          </span>
+          {naCadeia ? (
+            <>
+              <span>
+                <kbd>1</kbd>–<kbd>9</kbd> instalações
+              </span>
+              <span>
+                <kbd>I</kbd> <kbd>A</kbd> abas
+              </span>
+              <span>
+                <kbd>V</kbd> produtos
+              </span>
+            </>
+          ) : (
+            <>
+              <span>
+                <kbd>1</kbd>–<kbd>{Math.min(9, produtos.length)}</kbd> produtos
+              </span>
+              {temCadeia && (
+                <span>
+                  <kbd>C</kbd> cadeia
+                </span>
+              )}
+            </>
+          )}
           <span>
             <kbd>R</kbd> resultados
           </span>

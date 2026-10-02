@@ -4,6 +4,7 @@
  */
 import type { Aviso as AvisoDoMotor, VisaoProfessor } from "@simulador/compartilhado";
 import { Bell, ChartColumn, Trophy } from "lucide-react";
+import { quantidadeCom } from "../aluno/jogo";
 import { CorEquipe, Secao } from "../componentes/base";
 import { formatarNumero, formatarPercentual, formatarPontuacao, formatarReais } from "../formato";
 
@@ -58,6 +59,9 @@ export function EmpresasDaSala({ visao }: { visao: VisaoProfessor }) {
   const nomeProduto = new Map(visao.sala.produtos.map((p) => [p.id, p.nome]));
   const nomeMercado = new Map(visao.sala.mercados.map((m) => [m.id, m.nome]));
   const variosMercados = visao.sala.mercados.length > 1;
+  // Só nas salas com a cadeia produtiva (fase 1b): fazendas e estoque de matéria-prima por equipe.
+  const comCadeia = visao.sala.atividades.length > 0;
+  const materia = new Map(visao.sala.materiasPrimas.map((m) => [m.id, m]));
 
   return (
     <Secao titulo="Empresas" icone={<ChartColumn aria-hidden size={20} />}>
@@ -85,6 +89,11 @@ export function EmpresasDaSala({ visao }: { visao: VisaoProfessor }) {
               <th scope="col" className="num">
                 Fábricas
               </th>
+              {comCadeia && (
+                <th scope="col" className="num">
+                  Fazendas
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -107,11 +116,50 @@ export function EmpresasDaSala({ visao }: { visao: VisaoProfessor }) {
                 <td className="num">{formatarReais(e.receitaAcumulada)}</td>
                 <td className="num">{e.pontosDeVenda}</td>
                 <td className="num">{e.fabricas}</td>
+                {comCadeia && <td className="num">{e.fazendas}</td>}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {comCadeia && (
+        <details>
+          <summary>Estoque de matéria-prima por equipe</summary>
+          <div className="tabela-rolagem" style={{ marginTop: "0.75rem" }}>
+            <table className="tabela">
+              <thead>
+                <tr>
+                  <th scope="col">Empresa</th>
+                  <th scope="col">Matéria-prima</th>
+                  <th scope="col" className="num">
+                    Quantidade
+                  </th>
+                  <th scope="col" className="num">
+                    Valor em estoque
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {ativas.flatMap((e) =>
+                  e.materiasPrimas.map((m) => (
+                    <tr key={`${e.empresa}|${m.produto}`}>
+                      <td>
+                        <NomeDaEmpresa e={e} />
+                      </td>
+                      <td>{materia.get(m.produto)?.nome ?? m.produto}</td>
+                      <td className="num">
+                        {quantidadeCom(m.quantidade, materia.get(m.produto)?.unidade ?? "unidade")}
+                      </td>
+                      <td className="num">{formatarReais(m.valor)}</td>
+                    </tr>
+                  )),
+                )}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
 
       <details>
         <summary>Ofertas por produto (preço, participação, nota, estoque, qualidade, marca)</summary>

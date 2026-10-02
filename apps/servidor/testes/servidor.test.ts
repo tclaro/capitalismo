@@ -484,7 +484,10 @@ describe("teste de conexão e diagnóstico", () => {
 
   test("presets oferecidos: só os jogáveis", async () => {
     const r = await amb.navegador().pedir("/api/servidor");
-    expect(r.corpo.presets).toEqual([{ id: "introdutorio/padrao", nome: expect.any(String) }]);
+    expect(r.corpo.presets).toEqual([
+      { id: "introdutorio/padrao", nome: expect.any(String) },
+      { id: "cadeia/minima", nome: expect.any(String) },
+    ]);
   });
 });
 

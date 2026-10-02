@@ -1,0 +1,730 @@
+/*
+ * Tela da cadeia produtiva (fase 1b): palco com as instalações (fazendas → fábricas → loja), fios de
+ * fluxo, painel de decisões e atacado. Mesmas regras do jogo: sem rolagem, nada se mexe quando o
+ * número muda (larguras fixas, `white-space: nowrap`), 1920×1080 cabendo em 1366×768.
+ * Classes com prefixo "j-" como o resto da tela de jogo.
+ */
+
+/* Botões Cadeia | Produtos (HUD) */
+.j-vistas {
+  display: flex;
+  gap: 2px;
+  background: var(--cor-superficie-2);
+  border-radius: var(--raio-2);
+  padding: 2px;
+}
+.j-vistas button {
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--cor-texto-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.j-vistas button.sel {
+  background: var(--cor-primaria);
+  color: var(--cor-texto-na-primaria);
+}
+.j-vistas button.sel kbd {
+  color: inherit;
+  background: transparent;
+  border-color: currentColor;
+}
+
+/* Grade: palco | decisões | mercado */
+.j-principal.cadeia {
+  grid-template-columns: minmax(0, 1fr) minmax(23rem, 26rem) minmax(15rem, 17rem);
+}
+.j-cadeia-palco,
+.j-cadeia-lateral {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Palco */
+.j-palco-cadeia {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  background: var(--cor-palco);
+  border-radius: var(--raio-3);
+  box-shadow: var(--sombra-1);
+  padding: 0.8rem 1rem;
+  overflow: hidden;
+}
+.j-colunas-cab,
+.j-colunas {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2.6rem;
+}
+.j-colunas-cab > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.j-colunas-cab i {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  background: var(--c);
+}
+.j-colunas {
+  min-height: 0;
+}
+.j-col {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+  grid-auto-rows: min-content;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Cartão de instalação */
+.j-inst {
+  position: relative;
+  display: grid;
+  gap: 0.3rem;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--cor-superficie);
+  border: 2px solid transparent;
+  border-top: 4px solid var(--c, var(--cor-borda));
+  border-radius: var(--raio-3);
+  box-shadow: var(--sombra-1);
+  padding: 0.5rem 0.65rem 0.55rem;
+  cursor: pointer;
+}
+.j-inst:hover {
+  border-color: color-mix(in srgb, var(--c) 40%, transparent);
+  border-top-color: var(--c);
+}
+.j-inst.sel {
+  border-color: var(--cor-primaria);
+  border-top-color: var(--c);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cor-primaria) 22%, transparent), var(--sombra-1);
+}
+.j-inst .cab {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.j-inst .cab b {
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.j-inst .cab .sub {
+  margin-left: auto;
+  font-size: 0.74rem;
+  color: var(--cor-texto-2);
+  white-space: nowrap;
+}
+.j-inst .cab .j-tecla {
+  flex: none;
+  align-self: center;
+}
+.j-inst.nova {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 2px dashed var(--cor-borda);
+  border-top: 2px dashed var(--cor-borda);
+  background: color-mix(in srgb, var(--cor-superficie) 55%, transparent);
+  box-shadow: none;
+  color: var(--cor-texto-2);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.65rem;
+}
+.j-inst.nova.sel {
+  border-style: solid;
+  border-color: var(--cor-primaria);
+}
+.j-inst.encomenda {
+  cursor: default;
+  opacity: 0.85;
+}
+
+/* Estoque no cartão */
+.j-bloco-est {
+  display: grid;
+  gap: 2px;
+}
+.j-linha-est {
+  display: grid;
+  grid-template-columns: 5.4rem minmax(0, 1fr) 5.2rem;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+}
+.j-linha-est .nome {
+  color: var(--cor-texto-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.j-linha-est .nome.cheio {
+  color: var(--cor-prejuizo);
+  font-weight: 700;
+}
+.j-linha-est .qtd {
+  text-align: right;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.j-linha-est.loja {
+  grid-template-columns: minmax(0, 1fr) 4.6rem 4.8rem;
+}
+.j-linha-est.loja .vendas {
+  text-align: right;
+  color: var(--cor-texto-2);
+  white-space: nowrap;
+}
+.j-celulas {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 2px;
+}
+.j-celulas i {
+  height: 0.72rem;
+  border-radius: 2px;
+  background: var(--cor-vazio);
+}
+.j-celulas i.on {
+  background: var(--c);
+}
+.j-celulas i.baixo {
+  background: var(--cor-prejuizo);
+}
+.j-spark {
+  width: 100%;
+  height: 0.95rem;
+  display: block;
+  overflow: visible;
+}
+.j-spark .teto {
+  stroke: var(--cor-borda);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.j-spark .area {
+  fill: color-mix(in srgb, var(--c) 18%, transparent);
+  stroke: none;
+}
+.j-spark .linha {
+  fill: none;
+  stroke: var(--c);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.j-spark.cheio .linha {
+  stroke: var(--cor-prejuizo);
+}
+.j-spark.cheio .area {
+  fill: color-mix(in srgb, var(--cor-prejuizo) 16%, transparent);
+}
+.j-inst.compacto .j-spark {
+  display: none;
+}
+.j-insumo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.76rem;
+  padding: 0.12rem 0.35rem;
+  border-radius: 5px;
+  background: var(--cor-superficie-2);
+}
+.j-insumo small {
+  color: var(--cor-texto-2);
+}
+.j-insumo .tag {
+  min-width: 4.2rem;
+  text-align: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 0 0.4rem;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.j-insumo .tag.propria {
+  color: var(--cor-fazenda);
+  background: color-mix(in srgb, var(--cor-fazenda) 14%, transparent);
+}
+.j-insumo .tag.externo {
+  color: var(--cor-externo);
+  background: color-mix(in srgb, var(--cor-externo) 14%, transparent);
+}
+.j-fluxo-linha {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+  color: var(--cor-texto-2);
+}
+.j-fluxo-linha > span:first-child {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.j-pilula {
+  flex: none;
+  display: inline-block;
+  min-width: 6.2rem;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.05rem 0.45rem;
+  border-radius: 99px;
+  white-space: nowrap;
+  background: var(--cor-superficie-2);
+  color: var(--cor-texto-2);
+}
+.j-pilula.ok {
+  background: var(--cor-fundo-lucro);
+  color: var(--cor-lucro);
+}
+.j-pilula.alerta {
+  background: var(--cor-fundo-alerta);
+  color: var(--cor-alerta);
+}
+.j-pilula.erro {
+  background: var(--cor-fundo-prejuizo);
+  color: var(--cor-prejuizo);
+}
+
+/* Fornecedor externo e cooperativa */
+.j-externos {
+  display: flex;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+}
+.j-externos > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px dashed var(--cor-fio);
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  color: var(--cor-texto-2);
+  background: color-mix(in srgb, var(--cor-superficie) 55%, transparent);
+}
+.j-externos i {
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  background: var(--c);
+}
+
+/* Fios de fluxo */
+.j-fios {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.j-fios path {
+  fill: none;
+  stroke: var(--cor-fio);
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+.j-fios path.pulso {
+  stroke-dasharray: 2 10;
+  stroke: var(--cor-primaria);
+  opacity: 0.9;
+  animation: j-corre 1.1s linear infinite;
+}
+@keyframes j-corre {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+/* Coluna das decisões */
+.j-cadeia-lateral {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.6rem;
+}
+.j-abas {
+  display: flex;
+  gap: 0.3rem;
+  background: var(--cor-superficie);
+  border-radius: var(--raio-3);
+  box-shadow: var(--sombra-1);
+  padding: 0.3rem;
+}
+.j-abas button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  padding: 0.4rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--cor-texto-2);
+  cursor: pointer;
+}
+.j-abas button.sel {
+  background: var(--cor-destaque-suave);
+  color: var(--cor-primaria);
+}
+.j-painel-cadeia {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+  background: var(--cor-superficie);
+  border-radius: var(--raio-3);
+  box-shadow: var(--sombra-1);
+  padding: 0.75rem 0.9rem;
+  overflow: hidden;
+  min-height: 0;
+}
+.j-painel-titulo {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.02rem;
+}
+.j-painel-titulo i {
+  flex: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 3px;
+  background: var(--c);
+}
+.j-painel-titulo span {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.j-painel-titulo small {
+  margin-left: auto;
+  font-weight: 500;
+  font-size: 0.72rem;
+  color: var(--cor-texto-2);
+  white-space: nowrap;
+}
+.j-linha-estado {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 1.3rem;
+}
+.j-dica-curta {
+  font-size: 0.74rem;
+  color: var(--cor-texto-2);
+}
+.j-resumo {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+.j-resumo > div {
+  background: var(--cor-superficie-2);
+  border-radius: 8px;
+  padding: 0.3rem 0.5rem;
+  min-width: 0;
+}
+.j-resumo b {
+  display: block;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+.j-painel-cadeia .j-campos {
+  gap: 0.45rem;
+}
+.j-painel-cadeia .j-dica {
+  font-size: 0.74rem;
+  padding: 0.35rem 0.55rem;
+}
+.j-venda-mp {
+  display: grid;
+  gap: 0.4rem;
+  border-top: 1px solid var(--cor-borda);
+  padding-top: 0.5rem;
+}
+.j-venda-mp h3 {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.j-venda-mp h3 small {
+  font-weight: 500;
+  font-size: 0.74rem;
+  color: var(--cor-texto-2);
+  white-space: nowrap;
+}
+.j-coop {
+  display: grid;
+  gap: 0.25rem;
+}
+.j-coop-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.35rem;
+}
+.j-coop-linha input,
+.j-campo-simples input {
+  min-width: 0;
+  min-height: 2.1rem;
+  border: 1px solid var(--cor-borda);
+  border-radius: 7px;
+  padding: 0 0.55rem;
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.j-campo-simples {
+  display: grid;
+  gap: 0.25rem;
+}
+.j-campo-simples input[aria-invalid="true"] {
+  border-color: var(--cor-prejuizo);
+}
+
+/* Origem dos insumos e opções */
+.j-origens {
+  display: grid;
+  gap: 0.4rem;
+}
+.j-origem {
+  display: grid;
+  gap: 0.25rem;
+}
+.j-origem-nome {
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.j-origem-nome small {
+  font-weight: 500;
+  color: var(--cor-texto-2);
+}
+.j-opcoes {
+  display: grid;
+  gap: 0.3rem;
+}
+.j-opcao {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.4rem;
+  align-items: center;
+  text-align: left;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--cor-borda);
+  border-radius: 8px;
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.j-opcao:hover:not(:disabled) {
+  border-color: var(--cor-primaria);
+}
+.j-opcao.sel {
+  border-color: var(--cor-primaria);
+  background: var(--cor-destaque-suave);
+}
+.j-opcao:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+.j-opcao small {
+  display: block;
+  color: var(--cor-texto-2);
+  font-size: 0.72rem;
+}
+.j-opcao .preco {
+  text-align: right;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.j-linha-botoes {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.j-linha-botoes.fim {
+  justify-content: flex-end;
+}
+
+/* Listas (nova fábrica, loja) */
+.j-lista-construcao,
+.j-lista-loja {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.j-lista-construcao li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  border: 1px solid var(--cor-borda);
+  border-radius: 8px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.82rem;
+}
+.j-lista-construcao small {
+  display: block;
+  color: var(--cor-texto-2);
+  font-size: 0.72rem;
+}
+.j-lista-loja li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 5.6rem 6rem auto;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.8rem;
+}
+.j-lista-loja li.fora {
+  color: var(--cor-texto-2);
+}
+.j-lista-loja .nome {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.j-lista-loja .num {
+  text-align: right;
+  white-space: nowrap;
+}
+.j-lista-loja .botao {
+  min-height: 1.7rem;
+  padding: 0 0.5rem;
+  font-size: 0.74rem;
+}
+
+/* Atacado */
+.j-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.j-chip {
+  border: 1px solid var(--cor-borda);
+  border-radius: 99px;
+  background: var(--cor-superficie);
+  color: var(--cor-texto-2);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.1rem 0.6rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.j-chip.com {
+  color: var(--cor-texto);
+  border-color: var(--cor-fazenda);
+}
+.j-chip.sel {
+  background: var(--cor-primaria);
+  border-color: var(--cor-primaria);
+  color: var(--cor-texto-na-primaria);
+}
+.j-tabela-atacado {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+.j-tabela-atacado th {
+  text-align: left;
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--cor-texto-2);
+  padding: 0.25rem 0.35rem;
+}
+.j-tabela-atacado td {
+  padding: 0.22rem 0.35rem;
+  border-top: 1px solid var(--cor-borda);
+  white-space: nowrap;
+}
+.j-tabela-atacado .d {
+  text-align: right;
+}
+.j-tabela-atacado tr.nos td {
+  background: var(--cor-destaque-suave);
+}
+.j-tabela-atacado tr.faixa td {
+  color: var(--cor-texto-2);
+  font-style: italic;
+}
+.j-tabela-atacado tr.alvo td {
+  background: var(--cor-fundo-alerta);
+}
+.j-tabela-atacado .botao {
+  min-height: 1.6rem;
+  padding: 0 0.5rem;
+  font-size: 0.72rem;
+}
+.j-pedido {
+  display: grid;
+  gap: 0.4rem;
+}
+
+/* Troca de atividade */
+.j-janela.estreita {
+  width: min(36rem, 100%);
+}
+.j-troca {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1rem 1.25rem 1.1rem;
+  font-size: 0.9rem;
+}
+.j-troca p {
+  margin: 0;
+}
+.j-opcoes.coluna {
+  display: grid;
+  gap: 0.3rem;
+}
+.j-aviso-troca {
+  color: var(--cor-texto-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .j-fios path.pulso {
+    animation: none;
+  }
+}
+
+/* O HUD com os botões de visão ganha largura fixa para eles (nada pula ao alternar). */
+.j-ind-acoes.com-vistas {
+  width: 13.2rem;
+}

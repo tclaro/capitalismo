@@ -26,7 +26,12 @@ export function textoDoStatus(r: Pick<EstadoRelogio, "status" | "motivoPausa" | 
   }
 }
 
-export function Hud({ v, instantaneo, aoSair }: { v: VisaoAluno; instantaneo: Instantaneo; aoSair: () => void }) {
+export interface VistasDoHud {
+  atual: "cadeia" | "produtos";
+  aoMudar: (v: "cadeia" | "produtos") => void;
+}
+
+export function Hud({ v, instantaneo, aoSair, vistas }: { v: VisaoAluno; instantaneo: Instantaneo; aoSair: () => void; vistas?: VistasDoHud | undefined }) {
   const r = v.relogio;
   const e = v.visao.empresa;
   const caixa = useNumeroAnimado(e.caixa);
@@ -115,7 +120,17 @@ export function Hud({ v, instantaneo, aoSair }: { v: VisaoAluno; instantaneo: In
             {pos === null ? "—" : `${pos}º`} {pos !== null && v.ranking && v.sala.rankingVisivel === "completo" && <small>de {v.ranking.length}</small>}
           </b>
         </div>
-        <div className="j-ind-acoes">
+        <div className={`j-ind-acoes${vistas ? " com-vistas" : ""}`}>
+          {vistas && (
+            <div className="j-vistas" role="group" aria-label="Visão da tela">
+              <button type="button" className={vistas.atual === "cadeia" ? "sel" : ""} aria-pressed={vistas.atual === "cadeia"} onClick={() => vistas.aoMudar("cadeia")}>
+                Cadeia <kbd>C</kbd>
+              </button>
+              <button type="button" className={vistas.atual === "produtos" ? "sel" : ""} aria-pressed={vistas.atual === "produtos"} onClick={() => vistas.aoMudar("produtos")}>
+                Produtos <kbd>V</kbd>
+              </button>
+            </div>
+          )}
           <IndicadorConexao instantaneo={instantaneo} />
           <button type="button" className="j-sair" onClick={aoSair} title="Sair desta sala neste computador">
             <LogOut aria-hidden size={16} /> Sair

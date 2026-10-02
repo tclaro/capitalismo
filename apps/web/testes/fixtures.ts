@@ -36,3 +36,18 @@ export function salaDeExemplo(extra: Parameters<typeof configSala>[0] = {}) {
     },
   };
 }
+
+/**
+ * Sala do preset `cadeia/minima` com duas fazendas (gado leiteiro e gado de corte) encomendadas pela
+ * Alfa; `dias` ticks já jogados (as obras levam 30 dias).
+ */
+export function salaDaCadeia(dias = 2) {
+  const s = salaDeExemplo({ presetId: "cadeia/minima", vagasPorMercado: 3 });
+  const r = s.sala.decidir(s.id(), s.membros.ana, [
+    { tipo: "construirFazenda", atividade: "gado_leiteiro", producaoMensal: 6000 },
+    { tipo: "construirFazenda", atividade: "gado_de_corte", producaoMensal: 3000 },
+  ]);
+  if (!r.ok) throw new Error(r.motivo);
+  s.jogar(dias);
+  return s;
+}
