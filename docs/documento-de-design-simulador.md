@@ -112,7 +112,7 @@ Ferramenta **didática e competitiva** para cursos de Administração, usada em 
 ### 4.3 Fora da versão inicial (possíveis módulos futuros)
 
 - Mapa da cidade e localização de lojas
-- Prédios em grade de unidades (compra → produção → venda)
+- Prédios em grade de unidades (compra → produção → venda) como mecânica. Na cadeia mínima, os blocos entram só como visualização do fluxo e do estoque de cada instalação (seção 6.16)
 - Frete e logística entre cidades → **módulo futuro de Logística**
 - Treinamento de funcionários e contratação de executivos → módulo futuro de RH
 - Imóveis, empresas de mídia, compra de tecnologia
@@ -132,6 +132,8 @@ O professor escolhe os módulos ao criar a partida. Módulos podem ser ativados 
 | **Transversal** | Cenário e eventos | Professor dispara eventos macro (recessão, alta de insumo, imposto, safra ruim) | Economia |
 | **Futuro** | Logística | Onde produzir, onde vender, rotas, estoques regionais | Logística |
 | **Futuro** | RH | Treinamento, salários, produtividade | Gestão de Pessoas |
+
+**Primeira versão da camada 3 (decisão 28):** a **cadeia mínima** da seção 6.16, com fazendas sem calendário agrícola, fábricas de um nível só (semiacabados do fornecedor externo), atacado entre equipes e uma cooperativa que compra matéria-prima pelo preço piso. A camada 3 completa (cadeias longas, extração, calendário) segue na fase 4.
 
 **A árvore de produtos é genérica desde a fase 0.** O motor trata qualquer produto a partir de dados (receita, tipo de instalação, parâmetros). O que muda entre camadas e presets é **qual recorte da árvore** está ativo e **quais instalações** as equipes podem ter. Acrescentar um produto (ex.: queijo) é incluir dados, sem mudar código.
 
@@ -271,6 +273,8 @@ T_i' = T_i + taxa_T × (1 − exp(−verba_PD / PD_ref))
 
 ### 6.8 Fazendas: lavoura e pecuária (camada 3)
 
+> Esta seção descreve a camada 3 completa. A primeira versão (cadeia mínima, seção 6.16) não tem calendário agrícola e usa atividades fixas por fazenda.
+
 **Lavoura** (regras mantidas do Capitalism):
 - A equipe escolhe a cultura de cada unidade de cultivo. A cultura tem **mês de plantio** e **mês de colheita** (calendário brasileiro no anexo).
 - Se a ordem vier depois do mês de plantio, a unidade **espera o ano seguinte**.
@@ -383,6 +387,55 @@ Visibilidade do ranking para os alunos: **oculto**, **só a própria posição**
 12. Se for fim de mês: fechar DRE e balanço, recalcular preço da ação, aplicar IR, depreciação.
 13. Decisões dos robôs para o próximo tick.
 14. Gravar o novo estado e o histórico; notificar os clientes.
+
+### 6.16 Cadeia mínima: primeira versão da camada 3
+
+Decidida em 01/10/2026 (decisão 28). É a camada 3 reduzida ao necessário para os alunos verem as três etapas do jogo original: a origem dos insumos (fazendas), a fábrica e a loja. Vem antes das finanças e antes do piloto (seção 14).
+
+**Produtos** (preset `cadeia/minima`; recorte no anexo `arvore-de-produtos.md`, seção 5):
+
+| Papel | Itens |
+|---|---|
+| Vendidos direto da fazenda para a loja | carne bovina congelada, frango congelado |
+| Feitos na fábrica (1 nível) | leite engarrafado, sorvete, iogurte, jaqueta de couro, sapato, carteira |
+| Matérias-primas das fazendas | leite, couro, carne bovina, frango, morango, açúcar |
+| Semiacabados, só do fornecedor externo | vidro, ácido cítrico, tecido |
+
+**Regra de 1 nível de fábrica.** As fábricas dos alunos fazem apenas produtos finais. Os semiacabados vêm do fornecedor externo: não há fábrica de semiacabado nem extração (mina, poço, madeireira). Os dados das cadeias longas continuam no catálogo para presets futuros.
+
+**Instalações.** Uma equipe pode ter várias instalações, de tipos diferentes, e o jogo incentiva fechar a cadeia até a loja (integração vertical). As decisões de cada instalação são simples: o que produzir, quanto e de onde vem cada insumo.
+
+| Instalação | Atividade (uma por instalação) | Produz |
+|---|---|---|
+| Pecuária | gado de corte | carne bovina congelada e couro, juntos (coprodutos) |
+| Pecuária | gado leiteiro | leite |
+| Pecuária | frango | frango congelado |
+| Lavoura | morango | morango |
+| Lavoura | cana-de-açúcar | açúcar |
+| Fábrica | um produto final da lista | o produto, consumindo os insumos da receita |
+| Pontos de venda | genéricos, como na camada 1 | vendem no varejo os produtos finais e as carnes |
+
+- Produção contínua, sem calendário agrícola: safra, plantio e colheita ficam para muito depois (prioridade baixíssima). A qualidade cresce com a experiência da instalação, como na seção 6.8.
+- O gado de corte gera carne e couro numa proporção fixa. Se um deles encalha, o custo do outro sobe: é o gancho de custo conjunto da seção 6.8.
+
+**Troca de atividade.** A equipe pode trocar a atividade de uma fazenda (gado ↔ frango, morango ↔ cana). A troca tem custo e prazo de conversão, e o estoque da atividade antiga precisa ser desovado: vendido no atacado, vendido à cooperativa pelo preço piso ou destruído (sem receita, com custo de descarte opcional). Os valores ficam no preset.
+
+**De onde vem cada insumo.** Para cada insumo de cada fábrica, a equipe escolhe a origem:
+- a própria fazenda (transferência pelo custo de produção, sem lucro interno; decidido em 01/10/2026, e o preço de transferência fica como extensão da fase 4);
+- a oferta de outra equipe no atacado, com preço e qualidade visíveis;
+- o fornecedor externo.
+
+O que faltar na origem escolhida vem do fornecedor externo (padrão; o professor pode desligar, e então a fábrica produz menos).
+
+**Atacado entre equipes já na primeira versão** (seção 6.10). O vendedor anuncia preço e quantidade por mês de cada matéria-prima que produz; o comprador escolhe a oferta. O fornecedor externo funciona como teto natural do preço (ninguém compra acima dele) e a cooperativa, como piso.
+
+**Cooperativa compradora.** No jogo original, a garantia de comprador vinha da população de concorrentes da IA, que abria lojas e fábricas e escolhia fornecedores. Aqui há poucas equipes e no máximo 10 robôs, então a cooperativa ocupa esse papel: compra qualquer quantidade de matéria-prima pelo preço piso (parâmetro `fator_piso_cooperativa`, ponto de partida de 60% do preço do fornecedor externo, a calibrar). Nenhuma equipe fica sem cliente, mas vender à cooperativa rende pouco.
+
+**Robôs.** Na primeira versão continuam só na camada 1 (fábrica e loja, insumos do fornecedor externo). O balanceamento entre robôs e equipes na cadeia não é exigido (decisão 28). Robôs que compram e vendem no atacado ficam para a fase 4 (robôs *Integrada* e *Fornecedora*).
+
+**Visualização em blocos.** Inspirada na grade de unidades dos prédios do jogo original: cada instalação aparece como uma sequência curta de blocos (insumos → produção → estoque → venda), com a barra de estoque e o fluxo do dia, para o gargalo aparecer sem precisar de relatório. É só visualização, não uma mecânica de montar unidades. Validar num protótipo antes do código.
+
+**Ordem do tick** (seção 6.15): fazendas no passo 4, atacado e cooperativa no passo 5, fábricas no passo 6, varejo nos passos 8 e 9. O que a fazenda produz num tick só chega à fábrica no tick seguinte.
 
 ---
 
@@ -905,10 +958,11 @@ Cada fase termina em algo utilizável.
 | **PoC — Rede no laboratório** (primeira entrega) — **concluída em 29/09/2026** | `poc-rede.exe` com modos Professor e Aluno, relatório e roteiro de teste (seção 9.9) | Teste feito no laboratório real e relatório gerado, respondendo às duas perguntas (o executável roda? os alunos conectam?). Resultado: modo B adotado |
 | **Protótipo visual** (em paralelo à fase 0) — **dispensado (30/09/2026)** no início: o autor preferiu ir direto à fase 1. **Feito depois para a tela do aluno (01/10/2026)**, quando a primeira versão pareceu "uma página web"; validado com o autor e implementado (seção 8.2) | Telas navegáveis com dados fictícios e guia de estilo (seção 8.1) | — |
 | **0 — Motor e balanceamento** — **entregue em 30/09/2026, com pendência (decisão 26)** | Pacote do motor (camada 1) com **árvore de produtos genérica**, catálogo completo em dados (anexo), robôs, CLI de balanceamento, preset `introdutorio` | Testes unitários das fórmulas (incluindo a nota do manual); determinismo (mesma semente = mesmo resultado); relatório de balanceamento cumprindo as métricas da seção 10. Situação: motor, robôs, CLI e testes completos; o balanceamento fica em aberto até a fronteira tecnológica (seção 6.6) e os testes com alunos |
-| **1 — MVP em sala (rede local)** | Servidor Bun + SQLite + WebSocket, relógio no servidor, estado persistido a cada tick com retomada pausada, executável `.exe` portátil com modo servidor (modo B), várias salas simultâneas, chave de professor, PIN do professor e link do telão, entrada por endereço + código, guia de implantação do servidor, diagnóstico de rede, teste de carga, criar partida, tela de decisões, relógio (velocidade, pausa, modo rodada, avançar), painel do professor com visão geral, relatórios básicos, ranking | Piloto com uma turma real em laboratório sem falhas bloqueantes |
+| **1 — MVP em sala (rede local)** | Servidor Bun + SQLite + WebSocket, relógio no servidor, estado persistido a cada tick com retomada pausada, executável `.exe` portátil com modo servidor (modo B), várias salas simultâneas, chave de professor, PIN do professor e link do telão, entrada por endereço + código, guia de implantação do servidor, diagnóstico de rede, teste de carga, criar partida, tela de decisões, relógio (velocidade, pausa, modo rodada, avançar), painel do professor com visão geral, relatórios básicos, ranking | Entregas 1 a 6 concluídas em 01/10/2026; segue a entrega 7 (telão e acessibilidade). O piloto passou para depois da cadeia mínima (fase 1b) |
+| **1b — Cadeia mínima** (antecipada em 01/10/2026, decisão 28) | Camada 3 reduzida (seção 6.16): pecuária e lavoura sem calendário, fábricas de um nível, escolha da origem de cada insumo, atacado entre equipes, cooperativa compradora, troca de atividade com desova do estoque, visualização em blocos (com protótipo antes), preset `cadeia/minima`; em seguida, teste de carga, E2E e guias (entrega 8 da fase 1) | Piloto com uma turma real em laboratório sem falhas bloqueantes, jogando a cadeia mínima |
 | **2 — Aula completa** | Relatórios completos (DRE, balanço, fluxo de caixa), modo apresentação, debate final, exportação, salvar/abrir partida como arquivo, backup automático com rotação, modo A com tela inicial e descoberta UDP (para outras instituições), robôs no jogo, mercados paralelos, eventos básicos | Professor conduz o debate apenas com a ferramenta |
 | **3 — Finanças** | Camada 2: crédito, ações, dividendos, participações | Balanceamento reexecutado com a camada ativa |
-| **4 — Cadeia produtiva** | Camada 3: fazendas (lavoura com calendário, pecuária), mineração/petróleo/madeira com exaustão, fábricas em vários níveis, mercado atacadista entre equipes, presets `agronegocio`, `industria` e `completo`, eventos avançados (ex.: safra ruim) | Idem, com os robôs *Integrada* e *Fornecedora* |
+| **4 — Cadeia produtiva completa** | Camada 3 além da cadeia mínima: lavoura com calendário, mais rebanhos e culturas, mineração/petróleo/madeira com exaustão, fábricas em vários níveis, robôs no atacado, presets `agronegocio`, `industria` e `completo`, eventos avançados (ex.: safra ruim) | Idem, com os robôs *Integrada* e *Fornecedora* |
 | **5 — Modo online** (contingência) | O mesmo servidor numa hospedagem com disco persistente: contas de professor, HTTPS, guia de implantação | Uma aula remota completa sem falhas bloqueantes |
 | **Futuro** | Logística (múltiplas cidades, frete), RH, marketing avançado | A definir |
 
@@ -945,6 +999,7 @@ Confirmar com o autor antes ou durante o planejamento:
 25. **Endereço do servidor (modo B)** — reserva de IP no DHCP ou nome da máquina no domínio? Definir antes de imprimir o endereço nos laboratórios.
 26. **Fronteira tecnológica e recalibração da P&D** (aberta em 30/09/2026; seção 6.6 e `docs/calibracao-introdutorio.md`, seção 6) — implementar o teto tecnológico com retorno decrescente e recalibrar exigindo, ao mesmo tempo, equilíbrio no confronto e P&D com ótimo interior. **Adiada para depois dos testes com alunos**: até lá, o preset jogável é o `introdutorio/padrao` v0.2.0, em que P&D compensa, mas o robô premium bem ajustado vence ~77% das partidas entre robôs.
 27. ~~**Interface do aluno**~~ — **Decidido (01/10/2026), sobre o protótipo clicável:** tela de jogo em painel único sem rolagem (seção 8.2); tema claro por padrão; alvo de 1920×1080 (cabendo em 1366×768); envio automático das decisões, sem "Enter para confirmar"; fechamento do mês em janela só no modo rodada; participação em rosca sobre as linhas semanais; avisos flutuantes só para produto esgotado, 1º lugar e desfazer.
+28. ~~**Cadeia produtiva antes do piloto**~~ — **Decidido (01/10/2026):** a camada 3 é antecipada numa versão mínima (seção 6.16), antes das finanças e antes do piloto. Escopo: carne bovina e frango vendidos direto da fazenda; leite engarrafado, sorvete, iogurte, jaqueta de couro, sapato e carteira feitos em fábricas de um nível; pecuária (gado de corte, gado leiteiro ou frango) e lavoura (morango ou cana), com troca de atividade mediante custo e desova do estoque; vidro, ácido cítrico e tecido só do fornecedor externo. Uma equipe pode ter várias instalações. As instalações têm decisões simples (o que produzir, quanto e de onde vem cada insumo). O atacado entre equipes entra já na primeira versão, mesmo sem balanceamento com os robôs, e uma cooperativa compra matéria-prima pelo preço piso. A entrega entre instalações da mesma equipe é pelo custo, sem lucro interno. Calendário agrícola fica para muito depois; as lojas continuam genéricas. Protótipo da tela: `docs/prototipos/cadeia.html`.
 
 ---
 

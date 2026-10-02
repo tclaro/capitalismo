@@ -177,6 +177,7 @@ No jogo, cada **unidade de processamento** escolhe **um** produto do rebanho. Pa
 | Preset | Cadeias ativas | Por quê |
 |---|---|---|
 | **Introdutório** (camada 1) | Laticínios e couro: leite engarrafado, iogurte, sorvete, sapato, carteira. Insumos (leite, couro, vidro, morango, açúcar, ácido cítrico, tecido) comprados de fornecedor externo | Produtos familiares; make or buy com poucos insumos |
+| **Cadeia mínima** (camada 3 reduzida, seção 6.16 do design) | Pecuária (gado de corte → carne bovina e couro; gado leiteiro → leite; frango) + lavoura (morango, cana) → carne bovina e frango congelados direto na loja; leite engarrafado, sorvete, iogurte, jaqueta de couro, sapato e carteira em fábricas de um nível. Vidro, ácido cítrico e tecido do fornecedor externo | As três etapas do jogo (fazenda, fábrica, loja) com o menor número de peças; atacado entre equipes e integração vertical |
 | **Agronegócio** (camada 3) | Pecuária (gado, frango) + lavouras (morango, cana, trigo, cacau) → leite engarrafado, carnes congeladas e ovos, sobremesas, snacks, pão. Demais insumos (vidro, ácido cítrico, milho) do fornecedor externo | Sazonalidade, estoque, integração vertical, custo conjunto do rebanho |
 | **Indústria** (camada 3) | Mineração (ferro, carvão, sílica, alumínio, químicos) + petróleo → aço, vidro, silício, plástico, componentes eletrônicos → eletrônicos | Cadeias longas, exaustão de jazidas, mercado atacadista entre equipes |
 | **Completo** (camadas 1–3) | Toda a árvore | Uso avançado ou turmas de semestre final |
