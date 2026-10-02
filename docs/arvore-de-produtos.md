@@ -4,6 +4,7 @@
 > **Base:** lista de produtos e cadeias do *Capitalism II* (Manual, Apêndice A — produtos de varejo — e Apêndice B — Guia do Fabricante). Os nomes em inglês entre parênteses são os do manual, para facilitar a consulta.
 > **Números:** este anexo traz só a **estrutura** (o que é feito de quê). Quantidades, pesos de qualidade de cada insumo e peso da tecnologia estão no Apêndice B do manual e servem como **ponto de partida da calibração**, não como valores finais (ver seção 3, princípio 8, do documento principal).
 > Manual: https://www.enlight.com/capitalism2/manual/Capitalism2_Manual.pdf
+> Detalhes de fabricação de um produto (insumos, quantidades, pesos), quando o manual não bastar: https://capitalismlab.fandom.com/wiki/Category:Products (wiki do Capitalism Lab). Valem como ponto de partida da calibração, e nenhum texto ou arte da wiki é copiado.
 
 ---
 
