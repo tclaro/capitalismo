@@ -41,7 +41,7 @@ describe("criarPartida", () => {
     expect(alfa.pontosDeVenda.map((p) => [p.id, p.custo, p.operaDesdeTick])).toEqual([["pdv_01", 8_000_000, 0]]);
     expect(alfa.contabil.capitalSocial).toBe(58_000_000);
     expect(alfa.ofertas.map((o) => o.produto)).toEqual([LEITE, CARTEIRA]);
-    expect(oferta(e, "emp_01", LEITE).decisao).toEqual({ preco: null, compraMensal: 0, producaoMensal: 0, publicidadeMensal: 0, pdMensal: 0 });
+    expect(oferta(e, "emp_01", LEITE).decisao).toEqual({ preco: null, compraMensal: 0, producaoMensal: 0, publicidadeMensal: 0, pdMensal: 0, origemInsumos: {}, origemCompraPronta: "fornecedor" });
   });
 
   test("preset sem variação é resolvido com os valores base; pesos somam 100", () => {

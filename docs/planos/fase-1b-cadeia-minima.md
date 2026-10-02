@@ -84,7 +84,7 @@ Fora desta fase: calendário agrícola, extração, fábricas de semiacabados, r
 | 1 | **Catálogo e preset**: bloco de parâmetros da cadeia, `cadeia/minima`, validações. **Concluída em 02/10/2026** (o preset fica fora da lista de salas até o módulo existir) | Testes do catálogo; `validarPreset`; o golden do núcleo não muda |
 | 2 | **Estado do motor**: tipos, `materiasPrimas`, fazendas, versão 2 com migração, módulo aceito, balanço, depreciação, invariantes de teste. **Concluída em 02/10/2026** (sem comportamento de fazenda ainda: produção, decisões e atacado vêm nas entregas 3 a 6) | Invariantes existentes mais balanço fechado com fazendas; migração v1→v2 |
 | 3 | **Fazendas**: construir, ajustar, produzir (passo 4), coprodutos, qualidade por experiência. **Concluída em 02/10/2026** (decisões `construirFazenda` e `ajustarFazenda`; a troca de atividade fica na entrega 6; ver a nota abaixo da tabela) | Testes unitários e de propriedade (estoque e valor conservados) |
-| 4 | **Origem dos insumos**: fábrica e carne/frango a partir do estoque próprio, completando com o fornecedor | Custo e qualidade esperados em casos calculados à mão |
+| 4 | **Origem dos insumos**: fábrica e carne/frango a partir do estoque próprio, completando com o fornecedor. **Concluída em 02/10/2026** (origens `fornecedor` e `propria`; a origem `{equipe}` vem com o atacado, na entrega 5; ver a nota abaixo da tabela) | Custo e qualidade esperados em casos calculados à mão |
 | 5 | **Atacado e cooperativa** (passo 5; a cooperativa só compra por ordem da equipe) | Conservação do dinheiro entre empresas por tick; resultado igual com a ordem das empresas trocada; rateio proporcional |
 | 6 | **Troca de atividade e desova** | Três vias de desova; estoque e caixa conferem; conversão sem produção |
 | 7 | **Visão, protocolo, servidor e persistência** | Teste de vazamento (campos permitidos), validação do corpo, retomada de partida v1 |
@@ -100,6 +100,14 @@ Fora desta fase: calendário agrícola, extração, fábricas de semiacabados, r
 - O custo fixo das fazendas é lançado no passo 11 (junto do das fábricas), na conta `custo_fixo_fazenda`. **Acréscimo ao plano:** o estoque de matéria-prima paga armazenagem (`custoArmazenagemMensal` do produto, conta `armazenagem`), como o estoque de varejo.
 - `diasCheio` e `serie` são atualizados ao fim de cada tick (passo 11); o aviso `estoque_cheio` sai uma vez, quando o contador chega a 3. Aviso novo também: `fazenda_concluida`. Os textos da web são provisórios, até a tela da cadeia.
 - **Continua em aberto:** a capacidade de estoque das fábricas (decisão 16), a decidir na entrega 4.
+
+**Nota da entrega 4 (regras fixadas no código, `motor/src/fabricacao.ts` e `etapas.ts`):**
+- A decisão `produto` ganhou `origemInsumos` (por insumo da receita: `"fornecedor"` ou `"propria"`) e `origemCompraPronta` (para carne e frango). Escolher `"fornecedor"` remove a escolha do estado. Origem própria só vale para matéria-prima que alguma atividade do preset produz.
+- Origem própria sai do estoque de matéria-prima pelo custo médio, sem caixa, sem receita e sem DRE, com a qualidade do estoque. Insumo misto (parte própria, parte do fornecedor) tem qualidade média ponderada pela quantidade.
+- Duas ofertas da mesma empresa que disputam o mesmo estoque são atendidas na ordem das ofertas (a do preset); a que fica sem completa com o fornecedor.
+- **Novo parâmetro do preset:** `cadeia.completaComFornecedor` (`true` em `cadeia/minima`). Com `false`, a produção (ou a compra pronta) cai ao que o estoque próprio cobre.
+- **Versão 3 do estado** (migração 2→3: `origemInsumos: {}` e `origemCompraPronta: "fornecedor"` em toda oferta e `completaComFornecedor: true` na cadeia).
+- **Continua em aberto:** a capacidade de estoque das fábricas (decisão 16). Proposta: dias de produção à capacidade nominal que cabem no estoque de produto acabado, só como indicador (sem limitar a produção, para não mudar o núcleo), decidida junto com a tela (entrega 8), que é quem o consome. A origem `{equipe: empresaId}` e o aviso "insumo faltando na origem" ficam para as entregas 5 e 7.
 
 A entrega 7 do plano da fase 1 (telão e acessibilidade) continua antes desta fase, se o autor mantiver a ordem.
 

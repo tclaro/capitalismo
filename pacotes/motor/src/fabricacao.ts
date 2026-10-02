@@ -6,16 +6,21 @@
  *    acumula tecnologia, para quando a fábrica ficar pronta).
  * 2. T_max por (mercado, produto), com todas as empresas do mercado.
  * 3. Produção desejada de cada oferta, limitada pela capacidade das fábricas em operação.
- * 4. Insumos comprados do fornecedor externo no momento da produção. Se um insumo tem limite
+ * 3b. Origem dos insumos (camada 3): o que a decisão manda tirar do estoque próprio de matéria-prima é
+ *    reservado, empresa a empresa, na ordem das ofertas; se o estoque não cobre e o preset não completa
+ *    com o fornecedor, a produção da oferta cai ao que o estoque cobre.
+ * 4. O restante dos insumos é comprado do fornecedor externo no momento da produção. Se um insumo tem limite
  *    mensal, ele é dividido proporcionalmente entre todos os pedidos do mercado, e a produção de
  *    cada oferta é reduzida pelo insumo mais escasso da sua receita.
- * 5. O lote entra no estoque com custo = insumos + mão de obra e qualidade fixada na produção.
+ * 5. O lote entra no estoque com custo = insumos (próprios pelo custo médio, sem caixa; comprados pelo
+ *    preço do fornecedor) + mão de obra, e qualidade fixada na produção (insumo misto: média ponderada).
  */
 import { movimentarCaixa, reconhecerResultado } from "./contabilidade";
 import type { Contexto } from "./contexto";
-import { arredondarCentavos, darEntrada, parcelaDoDia } from "./dinheiro";
+import { arredondarCentavos, darEntrada, darSaida, parcelaDoDia } from "./dinheiro";
 import { qualidadeFabricada, tecnologiaNova, tecnologiaRelativa } from "./formulas/qualidade";
 import { taxaMensalParaTick } from "./formulas/tempo";
+import type { InsumoReceita } from "./preset";
 import { DIAS_POR_MES, type EstadoEmpresa, type EstadoFabrica, type EstadoOferta, type ParametrosResolvidos, type ProdutoResolvido } from "./tipos";
 import { temFabricaOperando } from "./vendas";
 
@@ -24,6 +29,8 @@ interface PedidoProducao {
   oferta: EstadoOferta;
   produto: ProdutoResolvido;
   quantidade: number;
+  /** Fração de cada insumo (0 a 1) que vem do estoque próprio; ausente = tudo do fornecedor. */
+  fracaoPropria: Map<string, number>;
 }
 
 /** Tolerância no limiar de nível: a experiência é uma soma de frações e 60 × (1/60) pode dar 0,9999999. */
@@ -116,9 +123,37 @@ export function etapaFabricacao(ctx: Contexto): void {
         if (!produto.fabricacao || oferta.decisao.producaoMensal <= 0) continue;
         if (!temFabricaOperando(empresa, produto.id, ctx.tick)) continue;
         const quantidade = Math.min(oferta.decisao.producaoMensal / n, capacidadeDeProducao(empresa, produto, ctx));
-        if (quantidade > 0) pedidos.push({ empresa, oferta, produto, quantidade });
+        if (quantidade > 0) pedidos.push({ empresa, oferta, produto, quantidade, fracaoPropria: new Map() });
       }
     }
+    if (pedidos.length === 0) continue;
+
+    // 3b. Reserva do estoque próprio de matéria-prima (quantidades ainda não retiradas).
+    const livre = new Map<string, number>();
+    const disponivelPropria = (empresa: EstadoEmpresa, insumo: string) => {
+      const chave = `${empresa.id}|${insumo}`;
+      if (!livre.has(chave)) livre.set(chave, empresa.materiasPrimas[insumo]?.estoque.quantidade ?? 0);
+      return { chave, quantidade: livre.get(chave)! };
+    };
+    for (const x of pedidos) {
+      const fab = x.produto.fabricacao!;
+      const proprios = fab.receita.filter((i) => x.oferta.decisao.origemInsumos[i.produto] === "propria");
+      if (proprios.length === 0) continue;
+      const necessidadeDe = (i: InsumoReceita) => (x.quantidade * i.quantidadePorLote) / fab.unidadesPorLote;
+      if (!p.cadeia!.completaComFornecedor) {
+        let escala = 1;
+        for (const i of proprios) escala = Math.min(escala, disponivelPropria(x.empresa, i.produto).quantidade / necessidadeDe(i));
+        x.quantidade *= escala;
+      }
+      for (const i of proprios) {
+        const necessario = necessidadeDe(i);
+        const { chave, quantidade: disponivel } = disponivelPropria(x.empresa, i.produto);
+        const propria = Math.min(necessario, disponivel);
+        livre.set(chave, disponivel - propria);
+        x.fracaoPropria.set(i.produto, necessario > 0 ? propria / necessario : 0);
+      }
+    }
+    for (let k = pedidos.length - 1; k >= 0; k--) if (pedidos[k]!.quantidade <= 0) pedidos.splice(k, 1);
     if (pedidos.length === 0) continue;
 
     // 4. Insumos escassos: fração disponível de cada insumo com limite mensal.
@@ -126,7 +161,9 @@ export function etapaFabricacao(ctx: Contexto): void {
     for (const x of pedidos) {
       const fab = x.produto.fabricacao!;
       for (const i of fab.receita) {
-        necessidade.set(i.produto, (necessidade.get(i.produto) ?? 0) + (x.quantidade * i.quantidadePorLote) / fab.unidadesPorLote);
+        const f = x.fracaoPropria.get(i.produto) ?? 0;
+        const total = (x.quantidade * i.quantidadePorLote) / fab.unidadesPorLote;
+        necessidade.set(i.produto, (necessidade.get(i.produto) ?? 0) + (f > 0 ? total * (1 - f) : total));
       }
     }
     const fracaoDisponivel = new Map<string, number>();
@@ -139,7 +176,8 @@ export function etapaFabricacao(ctx: Contexto): void {
     for (const x of pedidos) {
       const fab = x.produto.fabricacao!;
       let escala = 1;
-      for (const i of fab.receita) escala = Math.min(escala, fracaoDisponivel.get(i.produto)!);
+      // Só os insumos que ainda vêm do fornecedor limitam a produção.
+      for (const i of fab.receita) if ((x.fracaoPropria.get(i.produto) ?? 0) < 1) escala = Math.min(escala, fracaoDisponivel.get(i.produto)!);
       const quantidade = x.quantidade * escala;
       if (quantidade <= 0) continue;
 
@@ -148,10 +186,23 @@ export function etapaFabricacao(ctx: Contexto): void {
       for (const i of fab.receita) {
         const fornecedor = ctx.produtos.get(i.produto)!.fornecedor!;
         const quantidadeInsumo = (quantidade * i.quantidadePorLote) / fab.unidadesPorLote;
-        const custo = arredondarCentavos(quantidadeInsumo * fornecedor.preco);
+        // Parte própria: sai do estoque de matéria-prima pelo custo médio, sem caixa.
+        const fracao = x.fracaoPropria.get(i.produto) ?? 0;
+        let propria = 0;
+        let custoPropria = 0;
+        let qualidadePropria = 0;
+        if (fracao > 0) {
+          const estoqueMP = x.empresa.materiasPrimas[i.produto]!.estoque;
+          propria = Math.min(quantidadeInsumo * fracao, estoqueMP.quantidade);
+          qualidadePropria = estoqueMP.qualidade;
+          custoPropria = darSaida(estoqueMP, propria);
+        }
+        const doFornecedor = quantidadeInsumo - propria;
+        const custo = arredondarCentavos(doFornecedor * fornecedor.preco);
         movimentarCaixa(x.empresa, ctx.lancamentos, -custo, "operacional", "compra de insumo", "fornecedor_externo", x.empresa.id, i.produto);
-        custoInsumos += custo;
-        insumosDoLote.push({ peso: i.pesoQualidade, qualidade: fornecedor.qualidade });
+        custoInsumos += custo + custoPropria;
+        const qualidadeInsumo = propria > 0 ? (propria * qualidadePropria + doFornecedor * fornecedor.qualidade) / quantidadeInsumo : fornecedor.qualidade;
+        insumosDoLote.push({ peso: i.pesoQualidade, qualidade: qualidadeInsumo });
       }
       // Divide o lote entre as fábricas na proporção da capacidade: cada uma paga a mão de obra do seu
       // nível e ganha experiência (meses equivalentes de produção à capacidade nominal).

@@ -50,6 +50,9 @@ function ajustarDRE(pai: Objeto): void {
   pai.dre = reordenar(dre, CONTAS_DRE);
 }
 
+/** Campos da decisão de uma oferta na ordem em que `novaOferta` os cria. */
+const ORDEM_DA_DECISAO = ["preco", "compraMensal", "producaoMensal", "publicidadeMensal", "pdMensal", "origemInsumos", "origemCompraPronta"];
+
 function migrarDe1Para2(e: Objeto): void {
   if (ehObjeto(e.parametros) && e.parametros.cadeia === undefined) e.parametros.cadeia = null;
   if (Array.isArray(e.empresas)) {
@@ -68,6 +71,25 @@ function migrarDe1Para2(e: Objeto): void {
   e.versaoEstado = 2;
 }
 
+function migrarDe2Para3(e: Objeto): void {
+  if (ehObjeto(e.parametros) && ehObjeto(e.parametros.cadeia) && e.parametros.cadeia.completaComFornecedor === undefined) {
+    e.parametros.cadeia.completaComFornecedor = true;
+  }
+  if (Array.isArray(e.empresas)) {
+    for (const emp of e.empresas) {
+      if (!ehObjeto(emp) || !Array.isArray(emp.ofertas)) continue;
+      emp.ofertas = emp.ofertas.map((o: unknown) => {
+        if (!ehObjeto(o) || !ehObjeto(o.decisao)) return o;
+        if (o.decisao.origemInsumos === undefined) o.decisao.origemInsumos = {};
+        if (o.decisao.origemCompraPronta === undefined) o.decisao.origemCompraPronta = "fornecedor";
+        o.decisao = reordenar(o.decisao, ORDEM_DA_DECISAO);
+        return o;
+      });
+    }
+  }
+  e.versaoEstado = 3;
+}
+
 /**
  * Devolve o estado na versão atual. Lança erro se a entrada não tiver versão ou se for de uma versão
  * mais nova que este motor (um motor antigo não sabe ler estado novo).
@@ -79,5 +101,6 @@ export function migrarEstado(entrada: unknown): EstadoPartida {
   if (!Number.isInteger(versao) || versao < 1) throw new Error(`versaoEstado inválida: ${versao}`);
   const copia = JSON.parse(JSON.stringify(entrada)) as Objeto;
   if (versao === 1) migrarDe1Para2(copia);
+  if (versao <= 2) migrarDe2Para3(copia);
   return copia as unknown as EstadoPartida;
 }

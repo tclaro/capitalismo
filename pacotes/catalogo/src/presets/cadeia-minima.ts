@@ -171,5 +171,7 @@ export const PRESET_CADEIA_MINIMA: Preset = {
     conversao: { custo: reais(40_000), prazoDias: 10 },
     cooperativa: { fatorPiso: 0.6 },
     descarte: { custoPorUnidade: reais(0.5) },
+    // Origem própria que não basta é completada com o fornecedor externo (pode ser desligado no preset).
+    completaComFornecedor: true,
   },
 };

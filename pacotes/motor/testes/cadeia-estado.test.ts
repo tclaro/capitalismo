@@ -165,6 +165,10 @@ describe("migração do estado gravado", () => {
     v1.versaoEstado = 1;
     delete v1.parametros.cadeia;
     for (const e of v1.empresas) {
+      for (const o of e.ofertas) {
+        delete o.decisao.origemInsumos;
+        delete o.decisao.origemCompraPronta;
+      }
       delete e.fazendas;
       delete e.materiasPrimas;
       for (const dre of [e.contabil.mesAtual.dre, e.contabil.ultimoFechamento?.dre]) {
@@ -198,6 +202,21 @@ describe("migração do estado gravado", () => {
     const a = rodar(JSON.parse(JSON.stringify(base)) as EstadoPartida, 30);
     const b = rodar(migrado, 30);
     expect(JSON.stringify(b.estado)).toBe(JSON.stringify(a.estado));
+  });
+
+  test("estado da versão 2, com a cadeia, ganha a origem dos insumos e o completar com o fornecedor", () => {
+    const comCadeia = rodar(partidaComCadeia(true), 20).estado;
+    const v2 = JSON.parse(JSON.stringify(comCadeia)) as Record<string, any>;
+    v2.versaoEstado = 2;
+    delete v2.parametros.cadeia.completaComFornecedor;
+    for (const e of v2.empresas) {
+      for (const o of e.ofertas) {
+        delete o.decisao.origemInsumos;
+        delete o.decisao.origemCompraPronta;
+      }
+    }
+    expect(migrarEstado(v2)).toEqual(comCadeia);
+    expect(JSON.stringify(migrarEstado(v2))).toBe(JSON.stringify(comCadeia));
   });
 
   test("migrar não altera a entrada", () => {

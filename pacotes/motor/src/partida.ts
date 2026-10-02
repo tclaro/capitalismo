@@ -70,7 +70,7 @@ function materiasPrimasDaCadeia(p: ParametrosResolvidos): string[] {
 function novaOferta(produto: string, p: ParametrosResolvidos): EstadoOferta {
   return {
     produto,
-    decisao: { preco: null, compraMensal: 0, producaoMensal: 0, publicidadeMensal: 0, pdMensal: 0 },
+    decisao: { preco: null, compraMensal: 0, producaoMensal: 0, publicidadeMensal: 0, pdMensal: 0, origemInsumos: {}, origemCompraPronta: "fornecedor" },
     estoque: estoqueVazio(),
     reconhecimento: p.marca.reconhecimentoInicial,
     fidelidade: p.marca.fidelidadeInicial,

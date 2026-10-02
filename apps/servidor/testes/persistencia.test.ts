@@ -7,7 +7,7 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { passo } from "@simulador/motor";
+import { passo, VERSAO_ESTADO } from "@simulador/motor";
 import { abrirBanco, BACKUPS_MANTIDOS, MIGRACOES, pastaDeDados, versaoDoEsquema } from "../src/dados/banco";
 import { carregarSalas, ObservadorPersistente } from "../src/dados/persistencia";
 import { Repositorio } from "../src/dados/repositorio";
@@ -111,6 +111,10 @@ describe("gravação e retomada", () => {
       e.versaoEstado = 1;
       delete e.parametros.cadeia;
       for (const emp of e.empresas) {
+        for (const o of emp.ofertas) {
+          delete o.decisao.origemInsumos;
+          delete o.decisao.origemCompraPronta;
+        }
         delete emp.fazendas;
         delete emp.materiasPrimas;
         for (const dre of [emp.contabil.mesAtual.dre, emp.contabil.ultimoFechamento?.dre]) {
@@ -133,14 +137,14 @@ describe("gravação e retomada", () => {
     const relogio2 = new AgendadorFalso();
     const [retomada] = carregarSalas(repositorio, relogio2, () => new ObservadorPersistente(repositorio));
     expect(JSON.stringify(retomada!.estado)).toBe(esperado);
-    expect(retomada!.estado.versaoEstado).toBe(2);
+    expect(retomada!.estado.versaoEstado).toBe(VERSAO_ESTADO);
     // O estado de referência de um mês também sai migrado (usado no replay).
-    expect(repositorio.estadoDoMes("sala_p", 0)!.versaoEstado).toBe(2);
+    expect(repositorio.estadoDoMes("sala_p", 0)!.versaoEstado).toBe(VERSAO_ESTADO);
     // E a partida segue: com o relógio andando, os ticks avançam e o estado continua na versão atual.
     retomada!.comandoRelogio(cmd(), 42, "retomar");
     relogio2.avancar(18_000);
     expect(retomada!.estado.tick).toBeGreaterThan(42);
-    expect(retomada!.estado.versaoEstado).toBe(2);
+    expect(retomada!.estado.versaoEstado).toBe(VERSAO_ESTADO);
     db2.close();
   });
 

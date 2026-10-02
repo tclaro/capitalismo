@@ -109,6 +109,7 @@ function resolverCadeia(cadeia: ParametrosCadeia, semente: string): CadeiaResolv
     conversao: { ...cadeia.conversao },
     cooperativa: { ...cadeia.cooperativa },
     descarte: { ...cadeia.descarte },
+    completaComFornecedor: cadeia.completaComFornecedor,
   };
 }
 

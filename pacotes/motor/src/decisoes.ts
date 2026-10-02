@@ -10,7 +10,7 @@ import { movimentarCaixa, reconhecerResultado } from "./contabilidade";
 import { type Contexto, prazoEmTicks } from "./contexto";
 import { tetoDePreco } from "./formulas/nota";
 import { idSequencial } from "./partida";
-import type { CadeiaResolvida, Decisao, EstadoPartida } from "./tipos";
+import type { CadeiaResolvida, Decisao, EstadoEmpresa, EstadoPartida } from "./tipos";
 
 /** Limites de sanidade (não são regras de jogo): evitam números absurdos vindos da rede. */
 export const LIMITE_QUANTIDADE_MENSAL = 1e9;
@@ -30,6 +30,15 @@ function cadeiaAtiva(estado: EstadoPartida): CadeiaResolvida | null {
   return estado.modulos.includes("cadeia_produtiva") ? estado.parametros.cadeia : null;
 }
 
+/** Motivo de uma origem não valer para a matéria-prima na empresa, ou `null`. A origem própria exige uma fazenda possível. */
+function motivoDaOrigem(estado: EstadoPartida, empresa: EstadoEmpresa, materiaPrima: string, origem: unknown): string | null {
+  if (origem === "fornecedor") return null;
+  if (origem !== "propria") return `origem "${String(origem)}" desconhecida`;
+  if (!cadeiaAtiva(estado)) return "a cadeia produtiva não está ativa nesta partida";
+  if (empresa.materiasPrimas[materiaPrima] === undefined) return `nenhuma atividade das fazendas produz "${materiaPrima}"`;
+  return null;
+}
+
 /** Devolve `null` se a decisão é válida, ou o motivo da rejeição. */
 export function validarDecisao(estado: EstadoPartida, d: Decisao): string | null {
   const empresa = estado.empresas.find((e) => e.id === d.empresa);
@@ -39,7 +48,7 @@ export function validarDecisao(estado: EstadoPartida, d: Decisao): string | null
     case "produto": {
       const produto = estado.parametros.produtos.find((p) => p.id === d.produto);
       if (!produto || !produto.varejo) return `produto "${d.produto}" não é vendido nesta partida`;
-      const campos = ["preco", "compraMensal", "producaoMensal", "publicidadeMensal", "pdMensal"] as const;
+      const campos = ["preco", "compraMensal", "producaoMensal", "publicidadeMensal", "pdMensal", "origemInsumos", "origemCompraPronta"] as const;
       if (!campos.some((c) => d[c] !== undefined)) return "decisão de produto sem nenhum campo";
       if (d.preco !== undefined && d.preco !== null) {
         if (!Number.isInteger(d.preco) || d.preco <= 0) return "preço deve ser um valor positivo em centavos inteiros";
@@ -60,6 +69,18 @@ export function validarDecisao(estado: EstadoPartida, d: Decisao): string | null
       if (d.pdMensal !== undefined) {
         if (!inteiroNaoNegativo(d.pdMensal) || d.pdMensal > LIMITE_VERBA_MENSAL) return "verba de P&D deve ser centavos inteiros não negativos";
         if (d.pdMensal > 0 && !produto.fabricacao) return "P&D só se aplica a produtos fabricados";
+      }
+      if (d.origemInsumos !== undefined) {
+        if (typeof d.origemInsumos !== "object" || d.origemInsumos === null || Array.isArray(d.origemInsumos)) return "origem dos insumos inválida";
+        for (const [insumo, origem] of Object.entries(d.origemInsumos)) {
+          if (!produto.fabricacao?.receita.some((i) => i.produto === insumo)) return `"${insumo}" não é insumo da receita de ${produto.nome}`;
+          const motivo = motivoDaOrigem(estado, empresa, insumo, origem);
+          if (motivo !== null) return motivo;
+        }
+      }
+      if (d.origemCompraPronta !== undefined) {
+        const motivo = motivoDaOrigem(estado, empresa, produto.id, d.origemCompraPronta);
+        if (motivo !== null) return motivo;
       }
       return null;
     }
@@ -117,6 +138,11 @@ export function aplicarDecisao(ctx: Contexto, d: Decisao): void {
       if (d.producaoMensal !== undefined) oferta.decisao.producaoMensal = d.producaoMensal;
       if (d.publicidadeMensal !== undefined) oferta.decisao.publicidadeMensal = d.publicidadeMensal;
       if (d.pdMensal !== undefined) oferta.decisao.pdMensal = d.pdMensal;
+      for (const [insumo, origem] of Object.entries(d.origemInsumos ?? {})) {
+        if (origem === "fornecedor") delete oferta.decisao.origemInsumos[insumo];
+        else oferta.decisao.origemInsumos[insumo] = origem;
+      }
+      if (d.origemCompraPronta !== undefined) oferta.decisao.origemCompraPronta = d.origemCompraPronta;
       return;
     }
     case "construirFabrica": {

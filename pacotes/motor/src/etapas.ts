@@ -4,7 +4,7 @@
 import { movimentarCaixa, reconhecerResultado } from "./contabilidade";
 import type { Contexto } from "./contexto";
 import { aplicarDecisao } from "./decisoes";
-import { arredondarCentavos, darEntrada, parcelaDoDia } from "./dinheiro";
+import { arredondarCentavos, darEntrada, darSaida, parcelaDoDia } from "./dinheiro";
 import { aplicarEvento } from "./eventos";
 import { reconhecimentoNovo } from "./formulas/marca";
 import { taxaMensalParaTick } from "./formulas/tempo";
@@ -52,9 +52,23 @@ export function etapaComprasProntas(ctx: Contexto): void {
     for (const produto of ctx.estado.parametros.produtos) {
       if (!produto.varejo || !produto.fornecedor) continue;
       const fornecedor = produto.fornecedor;
-      const pedidos = empresas.map((e) => ({ empresa: e, oferta: e.ofertas.find((o) => o.produto === produto.id)! }))
+      let pedidos = empresas.map((e) => ({ empresa: e, oferta: e.ofertas.find((o) => o.produto === produto.id)! }))
         .map((x) => ({ ...x, quantidade: x.oferta.decisao.compraMensal / n }))
         .filter((x) => x.quantidade > 0);
+      // Origem própria (carne e frango da fazenda): sai do estoque de matéria-prima pelo custo médio, sem
+      // caixa nem receita; o que falta vai ao fornecedor se o preset completar.
+      const completa = ctx.estado.parametros.cadeia?.completaComFornecedor ?? true;
+      for (const x of pedidos) {
+        if (x.oferta.decisao.origemCompraPronta !== "propria") continue;
+        const estoqueMP = x.empresa.materiasPrimas[produto.id]?.estoque;
+        const propria = estoqueMP ? Math.min(x.quantidade, estoqueMP.quantidade) : 0;
+        if (estoqueMP && propria > 0) {
+          const qualidade = estoqueMP.qualidade;
+          darEntrada(x.oferta.estoque, propria, darSaida(estoqueMP, propria), qualidade);
+        }
+        x.quantidade = completa ? x.quantidade - propria : 0;
+      }
+      pedidos = pedidos.filter((x) => x.quantidade > 0);
       if (pedidos.length === 0) continue;
       let total = 0;
       for (const x of pedidos) total += x.quantidade;

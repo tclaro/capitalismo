@@ -17,8 +17,10 @@ import type { InsumoReceita, NivelProduto, ProducaoDaAtividade, TipoDeFazenda } 
  *
  * - 2: camada 3 (cadeia mínima): `parametros.cadeia`, `fazendas`, `materiasPrimas` e as contas
  *   `custo_fixo_fazenda` e `perda_de_estoque` da DRE.
+ * - 3: origem dos insumos: `origemInsumos` e `origemCompraPronta` na decisão de cada oferta e
+ *   `parametros.cadeia.completaComFornecedor`.
  */
-export const VERSAO_ESTADO = 2;
+export const VERSAO_ESTADO = 3;
 
 /** Tamanho da série de evolução do estoque guardada por matéria-prima (últimos dias, seção 6.16). */
 export const DIAS_DA_SERIE_DE_ESTOQUE = 30;
@@ -92,6 +94,7 @@ export interface CadeiaResolvida {
   conversao: { custo: Centavos; prazoDias: number };
   cooperativa: { fatorPiso: number };
   descarte: { custoPorUnidade: number };
+  completaComFornecedor: boolean;
 }
 
 export interface ParametrosResolvidos {
@@ -156,6 +159,12 @@ export interface EstadoMercado {
   fatorCiclo: number;
 }
 
+/**
+ * De onde vem um insumo (ou a mercadoria de revenda): `fornecedor` = compra do fornecedor externo (padrão);
+ * `propria` = estoque de matéria-prima da própria empresa, pelo custo médio, sem caixa nem receita.
+ */
+export type OrigemInsumo = "fornecedor" | "propria";
+
 /** Decisão persistente de uma empresa para um produto de varejo (vale até ser alterada). */
 export interface DecisaoProdutoVigente {
   /** Preço de venda em centavos; `null` = não vende o produto. */
@@ -166,6 +175,10 @@ export interface DecisaoProdutoVigente {
   producaoMensal: number;
   publicidadeMensal: Centavos;
   pdMensal: Centavos;
+  /** Insumos da receita que vêm do estoque próprio; o que não está aqui vem do fornecedor externo. */
+  origemInsumos: Record<string, OrigemInsumo>;
+  /** Origem da compra pronta (`compraMensal`): carne e frango podem vir da fazenda da própria empresa. */
+  origemCompraPronta: OrigemInsumo;
 }
 
 export interface EstadoOferta {
@@ -360,6 +373,9 @@ export type Decisao =
       producaoMensal?: number;
       publicidadeMensal?: Centavos;
       pdMensal?: Centavos;
+      /** Troca a origem dos insumos citados ("fornecedor" volta ao padrão); os demais não mudam. */
+      origemInsumos?: Record<string, OrigemInsumo>;
+      origemCompraPronta?: OrigemInsumo;
     }
   | { tipo: "construirFabrica"; empresa: string; produto: string }
   /** Camada 3: constrói uma fazenda da atividade. `producaoMensal` (unidades-base) é opcional; sem ela, começa em 0. */

@@ -130,6 +130,7 @@ describe("validarPreset rejeita cadeia inválida", () => {
     ["piso da cooperativa acima do fornecedor", (p) => void (p.cadeia!.cooperativa.fatorPiso = 1.2), "fatorPiso"],
     ["piso da cooperativa NaN", (p) => void (p.cadeia!.cooperativa.fatorPiso = Number.NaN), "fatorPiso: deve ser um número finito"],
     ["custo de descarte negativo", (p) => void (p.cadeia!.descarte.custoPorUnidade = -1), "descarte.custoPorUnidade"],
+    ["completaComFornecedor que não é verdadeiro ou falso", (p) => void ((p.cadeia as { completaComFornecedor: unknown }).completaComFornecedor = "sim"), "completaComFornecedor"],
   ];
 
   test("o preset é válido antes das mutações", () => {

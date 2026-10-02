@@ -231,6 +231,11 @@ export interface ParametrosCadeia {
   readonly cooperativa: { readonly fatorPiso: number };
   /** Destruição de estoque: custo por unidade destruída, em centavos (pode ser fracionário). */
   readonly descarte: { readonly custoPorUnidade: number };
+  /**
+   * Origem própria que não basta: `true` completa o que falta com o fornecedor externo (a produção segue);
+   * `false` reduz a produção ao que o estoque próprio cobre.
+   */
+  readonly completaComFornecedor: boolean;
 }
 
 export interface Preset {
@@ -365,6 +370,7 @@ function validarCadeia(c: Coletor, cadeia: ParametrosCadeia, porId: ReadonlyMap<
     );
   }
   c.naoNegativo(cadeia.descarte.custoPorUnidade, "cadeia.descarte.custoPorUnidade");
+  c.exigir(typeof cadeia.completaComFornecedor === "boolean", "cadeia.completaComFornecedor: deve ser verdadeiro ou falso");
 }
 
 /**
