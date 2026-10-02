@@ -35,6 +35,9 @@ export function etapaObras(ctx: Contexto): void {
     for (const f of empresa.fabricas) {
       if (f.operaDesdeTick === ctx.tick) ctx.avisos.push({ tipo: "fabrica_concluida", empresa: empresa.id, produto: f.produto });
     }
+    for (const f of empresa.fazendas) {
+      if (f.operaDesdeTick === ctx.tick) ctx.avisos.push({ tipo: "fazenda_concluida", empresa: empresa.id, atividade: f.atividade });
+    }
   }
 }
 

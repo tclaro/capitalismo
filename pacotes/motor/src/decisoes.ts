@@ -10,7 +10,7 @@ import { movimentarCaixa, reconhecerResultado } from "./contabilidade";
 import { type Contexto, prazoEmTicks } from "./contexto";
 import { tetoDePreco } from "./formulas/nota";
 import { idSequencial } from "./partida";
-import type { Decisao, EstadoPartida } from "./tipos";
+import type { CadeiaResolvida, Decisao, EstadoPartida } from "./tipos";
 
 /** Limites de sanidade (não são regras de jogo): evitam números absurdos vindos da rede. */
 export const LIMITE_QUANTIDADE_MENSAL = 1e9;
@@ -23,6 +23,11 @@ function inteiroNaoNegativo(v: unknown): v is number {
 
 function quantidadeValida(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= LIMITE_QUANTIDADE_MENSAL;
+}
+
+/** Parâmetros da cadeia se o módulo `cadeia_produtiva` está ligado na partida; senão, `null`. */
+function cadeiaAtiva(estado: EstadoPartida): CadeiaResolvida | null {
+  return estado.modulos.includes("cadeia_produtiva") ? estado.parametros.cadeia : null;
 }
 
 /** Devolve `null` se a decisão é válida, ou o motivo da rejeição. */
@@ -62,6 +67,19 @@ export function validarDecisao(estado: EstadoPartida, d: Decisao): string | null
       const produto = estado.parametros.produtos.find((p) => p.id === d.produto);
       if (!produto || !produto.varejo) return `produto "${d.produto}" não é vendido nesta partida`;
       if (!produto.fabricacao) return "este produto não pode ser fabricado";
+      return null;
+    }
+    case "construirFazenda": {
+      const cadeia = cadeiaAtiva(estado);
+      if (!cadeia) return "a cadeia produtiva não está ativa nesta partida";
+      if (!cadeia.atividades.some((a) => a.id === d.atividade)) return `atividade "${d.atividade}" não existe nesta partida`;
+      if (d.producaoMensal !== undefined && !quantidadeValida(d.producaoMensal)) return "quantidade de produção inválida";
+      return null;
+    }
+    case "ajustarFazenda": {
+      if (!cadeiaAtiva(estado)) return "a cadeia produtiva não está ativa nesta partida";
+      if (!empresa.fazendas.some((f) => f.id === d.fazenda)) return `a empresa não tem a fazenda "${d.fazenda}"`;
+      if (!quantidadeValida(d.producaoMensal)) return "quantidade de produção inválida";
       return null;
     }
     case "abrirPontoDeVenda":
@@ -114,6 +132,27 @@ export function aplicarDecisao(ctx: Contexto, d: Decisao): void {
         experiencia: 0,
       });
       movimentarCaixa(empresa, ctx.lancamentos, -fab.capex, "investimento", "construção de fábrica", empresa.id, "construtora", d.produto);
+      return;
+    }
+    case "construirFazenda": {
+      const a = p.cadeia!.atividades.find((x) => x.id === d.atividade)!;
+      const id = idSequencial("faz", empresa.proximoAtivo++);
+      empresa.fazendas.push({
+        id,
+        custo: a.capex,
+        depreciacaoAcumulada: 0,
+        operaDesdeTick: ctx.tick + prazoEmTicks(a.prazoConstrucaoDias, ctx),
+        vidaUtilMeses: a.vidaUtilMeses,
+        atividade: a.id,
+        experiencia: 0,
+        conversaoAteTick: null,
+        producaoMensal: d.producaoMensal ?? 0,
+      });
+      movimentarCaixa(empresa, ctx.lancamentos, -a.capex, "investimento", "construção de fazenda", empresa.id, "construtora");
+      return;
+    }
+    case "ajustarFazenda": {
+      empresa.fazendas.find((f) => f.id === d.fazenda)!.producaoMensal = d.producaoMensal;
       return;
     }
     case "abrirPontoDeVenda": {

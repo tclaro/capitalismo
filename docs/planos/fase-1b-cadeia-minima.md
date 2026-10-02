@@ -83,7 +83,7 @@ Fora desta fase: calendário agrícola, extração, fábricas de semiacabados, r
 |---|---|---|
 | 1 | **Catálogo e preset**: bloco de parâmetros da cadeia, `cadeia/minima`, validações. **Concluída em 02/10/2026** (o preset fica fora da lista de salas até o módulo existir) | Testes do catálogo; `validarPreset`; o golden do núcleo não muda |
 | 2 | **Estado do motor**: tipos, `materiasPrimas`, fazendas, versão 2 com migração, módulo aceito, balanço, depreciação, invariantes de teste. **Concluída em 02/10/2026** (sem comportamento de fazenda ainda: produção, decisões e atacado vêm nas entregas 3 a 6) | Invariantes existentes mais balanço fechado com fazendas; migração v1→v2 |
-| 3 | **Fazendas**: construir, ajustar, produzir (passo 4), coprodutos, qualidade por experiência | Testes unitários e de propriedade (estoque e valor conservados) |
+| 3 | **Fazendas**: construir, ajustar, produzir (passo 4), coprodutos, qualidade por experiência. **Concluída em 02/10/2026** (decisões `construirFazenda` e `ajustarFazenda`; a troca de atividade fica na entrega 6; ver a nota abaixo da tabela) | Testes unitários e de propriedade (estoque e valor conservados) |
 | 4 | **Origem dos insumos**: fábrica e carne/frango a partir do estoque próprio, completando com o fornecedor | Custo e qualidade esperados em casos calculados à mão |
 | 5 | **Atacado e cooperativa** (passo 5; a cooperativa só compra por ordem da equipe) | Conservação do dinheiro entre empresas por tick; resultado igual com a ordem das empresas trocada; rateio proporcional |
 | 6 | **Troca de atividade e desova** | Três vias de desova; estoque e caixa conferem; conversão sem produção |
@@ -91,6 +91,15 @@ Fora desta fase: calendário agrícola, extração, fábricas de semiacabados, r
 | 8 | **Tela da cadeia** | Testes de DOM (happy-dom); sem rolagem e sem tremor nos dois tamanhos |
 | 9 | **Calibração e balanceamento** do preset | Cada caminho (só fazenda, só fábrica, integrada) dá resultado plausível; cooperativa nunca é a melhor saída; relatório em `docs/balanceamento` |
 | 10 | **Fechamento**: documentos, guia, guia de TI, carga e E2E (antiga entrega 8) | `bun run verificar` limpo; roteiro do piloto |
+
+**Nota da entrega 3 (regras fixadas no código, `motor/src/fazendas.ts`):**
+- `construirFazenda` aceita `producaoMensal` opcional; sem ela a fazenda nasce com produção 0, como as fábricas. `ajustarFazenda` muda a produção mensal (em unidades-base) com a fazenda em obra ou em operação.
+- Por dia, a fazenda produz o menor entre a decisão, a capacidade nominal e o que ainda cabe no estoque de **cada** produto da atividade. Capacidade do estoque de uma matéria-prima = Σ (capacidade diária × proporção × `diasDeArmazenagem`) das fazendas em operação que a produzem. Estoque cheio para a produção; o custo fixo continua.
+- Custo variável do dia entra no estoque (vai à DRE pelo CPV, na venda) e é rateado entre os coprodutos pelo valor de referência; o rateio é exato em centavos.
+- Qualidade da produção = `qualidadeBase` + `ganhoQualidadePorMes` × experiência, até `qualidadeMaxima`; a experiência cresce em meses de produção à capacidade nominal.
+- O custo fixo das fazendas é lançado no passo 11 (junto do das fábricas), na conta `custo_fixo_fazenda`. **Acréscimo ao plano:** o estoque de matéria-prima paga armazenagem (`custoArmazenagemMensal` do produto, conta `armazenagem`), como o estoque de varejo.
+- `diasCheio` e `serie` são atualizados ao fim de cada tick (passo 11); o aviso `estoque_cheio` sai uma vez, quando o contador chega a 3. Aviso novo também: `fazenda_concluida`. Os textos da web são provisórios, até a tela da cadeia.
+- **Continua em aberto:** a capacidade de estoque das fábricas (decisão 16), a decidir na entrega 4.
 
 A entrega 7 do plano da fase 1 (telão e acessibilidade) continua antes desta fase, se o autor mantiver a ordem.
 

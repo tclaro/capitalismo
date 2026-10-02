@@ -362,6 +362,10 @@ export type Decisao =
       pdMensal?: Centavos;
     }
   | { tipo: "construirFabrica"; empresa: string; produto: string }
+  /** Camada 3: constrói uma fazenda da atividade. `producaoMensal` (unidades-base) é opcional; sem ela, começa em 0. */
+  | { tipo: "construirFazenda"; empresa: string; atividade: string; producaoMensal?: number }
+  /** Camada 3: muda a produção mensal vigente (unidades-base) de uma fazenda, em obra ou em operação. */
+  | { tipo: "ajustarFazenda"; empresa: string; fazenda: string; producaoMensal: number }
   | { tipo: "abrirPontoDeVenda"; empresa: string; quantidade: number }
   | { tipo: "fecharPontoDeVenda"; empresa: string; quantidade: number };
 
@@ -392,6 +396,9 @@ export type Aviso =
   | { tipo: "evento"; descricao: string }
   | { tipo: "ponto_de_venda_aberto"; empresa: string; quantidade: number }
   | { tipo: "fabrica_concluida"; empresa: string; produto: string }
+  | { tipo: "fazenda_concluida"; empresa: string; atividade: string }
+  /** O estoque da matéria-prima chegou a `DIAS_CHEIO_PARA_ALERTA` dias seguidos em 100%: a produção está parando. */
+  | { tipo: "estoque_cheio"; empresa: string; produto: string }
   | { tipo: "ruptura_de_estoque"; empresa: string; produto: string }
   | { tipo: "caixa_negativo"; empresa: string }
   | { tipo: "fim_de_mes"; mes: number };
