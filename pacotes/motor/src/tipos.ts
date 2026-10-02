@@ -238,6 +238,9 @@ export interface OfertaAtacado {
   quantidadeMensal: number;
 }
 
+/** Via de saída do estoque que fica sem produtor numa troca de atividade. */
+export type DesovaDoEstoque = "cooperativa" | "atacado" | "destruir";
+
 /** Pedido vigente de compra no atacado: quantidade por mês, entregue por dia pelo vendedor (se ele tiver oferta e estoque). */
 export interface PedidoAtacado {
   /** Id da empresa vendedora (do mesmo mercado). */
@@ -392,6 +395,14 @@ export type Decisao =
   | { tipo: "construirFazenda"; empresa: string; atividade: string; producaoMensal?: number }
   /** Camada 3: muda a produção mensal vigente (unidades-base) de uma fazenda, em obra ou em operação. */
   | { tipo: "ajustarFazenda"; empresa: string; fazenda: string; producaoMensal: number }
+  /**
+   * Camada 3: troca a atividade de uma fazenda em operação. Custa `conversao.custo`, para a produção por
+   * `conversao.prazoDias` e zera a experiência e a produção mensal. O estoque que a atividade antiga deixa
+   * sem produtor na empresa sai na hora, por `desova`: `cooperativa` (ao piso), `atacado` (lote único aos
+   * pedidos vigentes, a `fatorPrecoAtacado` × o preço do fornecedor, entre o piso e 1) ou `destruir`
+   * (perda na DRE mais o custo de descarte).
+   */
+  | { tipo: "trocarAtividade"; empresa: string; fazenda: string; atividade: string; desova: DesovaDoEstoque; fatorPrecoAtacado?: number }
   /** Camada 3: oferta de matéria-prima no atacado (preço entre o piso da cooperativa e o do fornecedor). `quantidadeMensal` 0 retira a oferta. */
   | { tipo: "ofertarNoAtacado"; empresa: string; produto: string; preco: Centavos; quantidadeMensal: number }
   /** Camada 3: pedido vigente de compra no atacado de outra equipe do mesmo mercado. `quantidadeMensal` 0 cancela. */
@@ -429,6 +440,7 @@ export type Aviso =
   | { tipo: "ponto_de_venda_aberto"; empresa: string; quantidade: number }
   | { tipo: "fabrica_concluida"; empresa: string; produto: string }
   | { tipo: "fazenda_concluida"; empresa: string; atividade: string }
+  | { tipo: "conversao_concluida"; empresa: string; atividade: string }
   /** O estoque da matéria-prima chegou a `DIAS_CHEIO_PARA_ALERTA` dias seguidos em 100%: a produção está parando. */
   | { tipo: "estoque_cheio"; empresa: string; produto: string }
   | { tipo: "ruptura_de_estoque"; empresa: string; produto: string }

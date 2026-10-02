@@ -35,6 +35,8 @@ export interface Contexto {
   fechamentos: { empresa: string; fechamento: FechamentoMensal }[];
   /** Ordens de venda à cooperativa dadas neste tick (decisões do passo 2), executadas no passo 5. */
   vendasCooperativa: { empresa: string; produto: string; quantidade: number }[];
+  /** Lotes únicos de desova no atacado dados neste tick (troca de atividade), vendidos no passo 5. */
+  lotesAtacado: { empresa: string; produto: string; quantidade: number; preco: number }[];
   historico: HistoricoTick;
 }
 
@@ -64,6 +66,7 @@ export function criarContexto(estado: EstadoPartida): Contexto {
     lancamentos: [],
     fechamentos: [],
     vendasCooperativa: [],
+    lotesAtacado: [],
     historico: { tick, mes, dia, ofertas: [], demandaTotal: [] },
   };
 }

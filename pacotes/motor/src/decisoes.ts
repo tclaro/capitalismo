@@ -9,6 +9,7 @@
 import { movimentarCaixa, reconhecerResultado } from "./contabilidade";
 import { precoDaCooperativa } from "./atacado";
 import { type Contexto, prazoEmTicks } from "./contexto";
+import { emConversao, trocarAtividade } from "./fazendas";
 import { tetoDePreco } from "./formulas/nota";
 import type { Centavos } from "./dinheiro";
 import { idSequencial } from "./partida";
@@ -118,6 +119,25 @@ export function validarDecisao(estado: EstadoPartida, d: Decisao): string | null
       if (!quantidadeValida(d.producaoMensal)) return "quantidade de produção inválida";
       return null;
     }
+    case "trocarAtividade": {
+      const cadeia = cadeiaAtiva(estado);
+      if (!cadeia) return "a cadeia produtiva não está ativa nesta partida";
+      const fazenda = empresa.fazendas.find((f) => f.id === d.fazenda);
+      if (!fazenda) return `a empresa não tem a fazenda "${d.fazenda}"`;
+      if (!cadeia.atividades.some((a) => a.id === d.atividade)) return `atividade "${d.atividade}" não existe nesta partida`;
+      if (d.atividade === fazenda.atividade) return "a fazenda já é desta atividade";
+      const tick = estado.tick + 1; // a decisão vale no próximo tick
+      if (fazenda.operaDesdeTick > tick) return "a fazenda ainda está em obra";
+      if (emConversao(fazenda, tick)) return "a fazenda já está em conversão";
+      if (d.desova !== "cooperativa" && d.desova !== "atacado" && d.desova !== "destruir") return `desova "${String(d.desova)}" desconhecida`;
+      if (d.desova === "atacado") {
+        const f = d.fatorPrecoAtacado;
+        if (typeof f !== "number" || !Number.isFinite(f) || f < cadeia.cooperativa.fatorPiso || f > 1) {
+          return `o fator de preço do atacado deve estar entre ${cadeia.cooperativa.fatorPiso} (piso da cooperativa) e 1 (preço do fornecedor)`;
+        }
+      }
+      return null;
+    }
     case "ofertarNoAtacado": {
       const motivoBase = motivoDaMateriaPrima(estado, empresa, d.produto);
       if (motivoBase !== null) return motivoBase;
@@ -222,6 +242,10 @@ export function aplicarDecisao(ctx: Contexto, d: Decisao): void {
     }
     case "ajustarFazenda": {
       empresa.fazendas.find((f) => f.id === d.fazenda)!.producaoMensal = d.producaoMensal;
+      return;
+    }
+    case "trocarAtividade": {
+      trocarAtividade(ctx, empresa, d);
       return;
     }
     case "ofertarNoAtacado": {

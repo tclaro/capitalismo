@@ -14,13 +14,14 @@
  *   das fazendas em operação que a produzem. Estoque cheio para a produção; o custo fixo continua.
  */
 import { movimentarCaixa, reconhecerResultado } from "./contabilidade";
-import type { Contexto } from "./contexto";
-import { arredondarCentavos, darEntrada, parcelaDoDia } from "./dinheiro";
+import { type Contexto, prazoEmTicks } from "./contexto";
+import { arredondarCentavos, darEntrada, darSaida, parcelaDoDia } from "./dinheiro";
 import {
   type AtividadeResolvida,
   DIAS_CHEIO_PARA_ALERTA,
   DIAS_DA_SERIE_DE_ESTOQUE,
   DIAS_POR_MES,
+  type Decisao,
   type EstadoEmpresa,
   type EstadoFazenda,
 } from "./tipos";
@@ -39,6 +40,11 @@ export function atividadeDaFazenda(fazenda: EstadoFazenda, ctx: Contexto): Ativi
 /** Fazenda que produz neste tick: obra concluída e sem troca de atividade em curso. */
 export function fazendaProduzindo(fazenda: EstadoFazenda, tick: number): boolean {
   return fazenda.operaDesdeTick <= tick && (fazenda.conversaoAteTick === null || fazenda.conversaoAteTick < tick);
+}
+
+/** A fazenda está em conversão no tick (não produz)? */
+export function emConversao(fazenda: EstadoFazenda, tick: number): boolean {
+  return fazenda.conversaoAteTick !== null && fazenda.conversaoAteTick >= tick;
 }
 
 /** Capacidade do estoque da matéria-prima na empresa (soma das fazendas em operação que a produzem). */
@@ -78,6 +84,55 @@ export function ratear(total: number, pesos: readonly number[]): number[] {
     restante -= parte;
   });
   return partes;
+}
+
+/**
+ * Matérias-primas da atividade atual da fazenda que, depois da troca, ninguém mais produz na empresa
+ * (nem a nova atividade, nem as outras fazendas, em qualquer estado). Em ordem alfabética.
+ */
+export function produtosOrfaos(empresa: EstadoEmpresa, fazenda: EstadoFazenda, novaAtividade: AtividadeResolvida, ctx: Contexto): string[] {
+  const mantidos = new Set(novaAtividade.produz.map((x) => x.produto));
+  for (const g of empresa.fazendas) if (g.id !== fazenda.id) for (const x of atividadeDaFazenda(g, ctx).produz) mantidos.add(x.produto);
+  return atividadeDaFazenda(fazenda, ctx)
+    .produz.map((x) => x.produto)
+    .filter((produto) => !mantidos.has(produto))
+    .sort();
+}
+
+/**
+ * Troca de atividade (decisão `trocarAtividade`): cobra a conversão, para a fazenda pelo prazo e dá
+ * saída ao estoque órfão pela via escolhida. A cooperativa e o atacado são executados no passo 5 do
+ * mesmo tick; a destruição é imediata.
+ */
+export function trocarAtividade(ctx: Contexto, empresa: EstadoEmpresa, d: Extract<Decisao, { tipo: "trocarAtividade" }>): void {
+  const cadeia = ctx.estado.parametros.cadeia!;
+  const fazenda = empresa.fazendas.find((f) => f.id === d.fazenda)!;
+  const nova = cadeia.atividades.find((a) => a.id === d.atividade)!;
+
+  const orfaos = produtosOrfaos(empresa, fazenda, nova, ctx);
+  for (const produto of orfaos) {
+    const estoque = empresa.materiasPrimas[produto]!.estoque;
+    if (estoque.quantidade <= 0) continue;
+    if (d.desova === "cooperativa") {
+      ctx.vendasCooperativa.push({ empresa: empresa.id, produto, quantidade: estoque.quantidade });
+    } else if (d.desova === "atacado") {
+      const preco = arredondarCentavos(ctx.produtos.get(produto)!.fornecedor!.preco * d.fatorPrecoAtacado!);
+      ctx.lotesAtacado.push({ empresa: empresa.id, produto, quantidade: estoque.quantidade, preco });
+    } else {
+      const descarte = arredondarCentavos(estoque.quantidade * cadeia.descarte.custoPorUnidade);
+      const perda = darSaida(estoque, estoque.quantidade) + descarte;
+      movimentarCaixa(empresa, ctx.lancamentos, -descarte, "operacional", "descarte de estoque", empresa.id, "descarte", produto);
+      reconhecerResultado(empresa, "perda_de_estoque", perda);
+    }
+  }
+
+  movimentarCaixa(empresa, ctx.lancamentos, -cadeia.conversao.custo, "operacional", "conversão de fazenda", empresa.id, "prestadores");
+  reconhecerResultado(empresa, "custo_fixo_fazenda", cadeia.conversao.custo);
+  fazenda.atividade = nova.id;
+  fazenda.experiencia = 0;
+  fazenda.producaoMensal = 0;
+  // Volta a produzir no tick `tick + prazo`, como uma obra que termina nesse tick.
+  fazenda.conversaoAteTick = ctx.tick + prazoEmTicks(cadeia.conversao.prazoDias, ctx) - 1;
 }
 
 /** Passo 4: produção das fazendas em operação. */

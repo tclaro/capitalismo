@@ -86,7 +86,7 @@ Fora desta fase: calendário agrícola, extração, fábricas de semiacabados, r
 | 3 | **Fazendas**: construir, ajustar, produzir (passo 4), coprodutos, qualidade por experiência. **Concluída em 02/10/2026** (decisões `construirFazenda` e `ajustarFazenda`; a troca de atividade fica na entrega 6; ver a nota abaixo da tabela) | Testes unitários e de propriedade (estoque e valor conservados) |
 | 4 | **Origem dos insumos**: fábrica e carne/frango a partir do estoque próprio, completando com o fornecedor. **Concluída em 02/10/2026** (origens `fornecedor` e `propria`; a origem `{equipe}` vem com o atacado, na entrega 5; ver a nota abaixo da tabela) | Custo e qualidade esperados em casos calculados à mão |
 | 5 | **Atacado e cooperativa** (passo 5; a cooperativa só compra por ordem da equipe). **Concluída em 02/10/2026** (ver a nota abaixo da tabela) | Conservação do dinheiro entre empresas por tick; resultado igual com a ordem das empresas trocada; rateio proporcional |
-| 6 | **Troca de atividade e desova** | Três vias de desova; estoque e caixa conferem; conversão sem produção |
+| 6 | **Troca de atividade e desova**. **Concluída em 02/10/2026** (ver a nota abaixo da tabela) | Três vias de desova; estoque e caixa conferem; conversão sem produção |
 | 7 | **Visão, protocolo, servidor e persistência** | Teste de vazamento (campos permitidos), validação do corpo, retomada de partida v1 |
 | 8 | **Tela da cadeia** | Testes de DOM (happy-dom); sem rolagem e sem tremor nos dois tamanhos |
 | 9 | **Calibração e balanceamento** do preset | Cada caminho (só fazenda, só fábrica, integrada) dá resultado plausível; cooperativa nunca é a melhor saída; relatório em `docs/balanceamento` |
@@ -116,6 +116,13 @@ Fora desta fase: calendário agrícola, extração, fábricas de semiacabados, r
 - Ordem no passo 5: (1) cooperativa; (2) disponível de cada oferta = menor entre a quantidade diária ofertada e o estoque que sobrou, **medido antes de qualquer entrega** (o que se compra num tick só pode ser revendido no seguinte); (3) pedidos agregados por vendedor e atendidos na proporção quando excedem o disponível. A cooperativa tem prioridade sobre o atacado no estoque do vendedor.
 - Venda e compra usam o mesmo valor em centavos (soma zero, invariante nova em `verificarInvariantes`). O vendedor reconhece receita e CPV; o comprador só ganha estoque, pelo preço pago, com a qualidade do vendedor. A cooperativa paga ao preço-piso, reconhece receita e CPV (normalmente com prejuízo) e nunca compra sem ordem.
 - **Versão 4 do estado** (migração 3→4: `pedidoAtacado: null` em cada matéria-prima).
+
+**Nota da entrega 6 (regras fixadas no código, `motor/src/fazendas.ts` e `atacado.ts`):**
+- Decisão `trocarAtividade` (fazenda, atividade nova, `desova`, e `fatorPrecoAtacado` quando a via é o atacado). Só vale para fazenda em operação, que não esteja em conversão, e para atividade diferente da atual.
+- Custo e prazo vêm do preset (`conversao`): o custo sai do caixa na hora e vai à DRE na conta `custo_fixo_fazenda` (**escolha minha**: não é capitalizado no ativo). A fazenda volta a produzir no tick `decisão + prazo`, como uma obra; a experiência e a produção mensal voltam a zero (as unidades-base mudam com a atividade). Aviso novo: `conversao_concluida`.
+- **Estoque órfão** é o das matérias-primas da atividade antiga que nem a atividade nova nem outra fazenda da empresa (em qualquer estado) produz. É só ele que sai; o resto fica. Isso permite trocar uma de duas fazendas iguais sem perder o estoque.
+- Vias: `destruir` (imediata: baixa o estoque como `perda_de_estoque`, mais o descarte em caixa, também na perda); `cooperativa` (ordem de venda de todo o órfão, ao piso, no passo 5); `atacado` (lote único aos pedidos vigentes a `fatorPrecoAtacado` × preço do fornecedor, com o fator entre o piso e 1; cada pedido leva até a sua **quantidade mensal**, na proporção quando o lote não basta). **O que o lote não vender fica no estoque**, para vender depois pela oferta normal ou pela cooperativa; é o desvio em relação a "sai na mesma hora", porque não há comprador garantido.
+- O lote sai antes da oferta do dia, e a oferta do dia vê o estoque já descontado, dividido na proporção entre os compradores.
 
 A entrega 7 do plano da fase 1 (telão e acessibilidade) continua antes desta fase, se o autor mantiver a ordem.
 

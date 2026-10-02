@@ -226,6 +226,8 @@ export function textoDoAviso(a: AvisoDoMotor, v: VisaoAluno): string {
     // A tela da cadeia (entrega 8 da fase 1b) traz os nomes das atividades e matérias-primas; até lá, o id legível.
     case "fazenda_concluida":
       return `A fazenda de ${a.atividade.replaceAll("_", " ")} ficou pronta: já dá para produzir.`;
+    case "conversao_concluida":
+      return `A fazenda virou ${a.atividade.replaceAll("_", " ")}: já dá para produzir.`;
     case "estoque_cheio":
       return `O estoque de ${produto(a.produto).replaceAll("_", " ")} está cheio há dias: a produção da fazenda vai parar.`;
     case "ruptura_de_estoque":

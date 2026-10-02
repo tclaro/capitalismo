@@ -4,11 +4,12 @@
  * Ordem do passo, para o resultado não depender da ordem das empresas:
  * 1. Vendas à cooperativa (ordens dadas no passo 2): cada empresa vende o menor entre o pedido e o seu
  *    estoque, ao preço-piso. Só depende da própria empresa.
- * 2. Disponível de cada oferta de atacado = menor entre a quantidade diária ofertada e o estoque que
- *    sobrou, medido antes de qualquer entrega do atacado (assim, o que uma empresa compra neste tick
- *    não pode ser revendido no mesmo tick).
- * 3. Pedidos agregados por (vendedor, produto), atendidos proporcionalmente quando excedem o disponível;
- *    vendedores em ordem de id, produtos em ordem alfabética, compradores em ordem de id.
+ * 2. Estoque de cada vendedor medido depois da cooperativa e antes de qualquer entrega do atacado (assim,
+ *    o que uma empresa compra neste tick não pode ser revendido no mesmo tick).
+ * 3. Lotes únicos de desova (troca de atividade), aos pedidos vigentes, a preço reduzido.
+ * 4. Atacado do dia: disponível = menor entre a quantidade diária ofertada e o estoque medido em 2 (menos o
+ *    lote); pedidos atendidos proporcionalmente quando o excedem. Vendedores em ordem de id, produtos em
+ *    ordem alfabética, compradores em ordem de id.
  *
  * Venda e compra usam o mesmo valor em centavos, então o dinheiro entre as empresas soma zero. O
  * vendedor reconhece receita e CPV (custo médio); o comprador põe a mercadoria no estoque de
@@ -51,16 +52,12 @@ export function etapaAtacado(ctx: Contexto): void {
     }
   }
 
-  // 2. Disponível de cada oferta de atacado, medido antes de qualquer entrega.
-  const disponivel = new Map<string, number>();
-  for (const empresa of empresas) {
-    for (const [produto, m] of Object.entries(empresa.materiasPrimas)) {
-      if (m.ofertaAtacado) disponivel.set(`${empresa.id}|${produto}`, Math.min(m.ofertaAtacado.quantidadeMensal / n, m.estoque.quantidade));
-    }
-  }
+  // 2. Estoque de cada vendedor depois da cooperativa e antes de qualquer entrega do atacado.
+  const estoqueInicial = new Map<string, number>();
+  for (const empresa of empresas) for (const [produto, m] of Object.entries(empresa.materiasPrimas)) estoqueInicial.set(`${empresa.id}|${produto}`, m.estoque.quantidade);
 
-  // 3. Pedidos por (vendedor, produto), na ordem dos compradores.
-  const pedidos = new Map<string, { comprador: EstadoEmpresa; quantidade: number }[]>();
+  // Pedidos vigentes por (vendedor, produto), na ordem dos compradores.
+  const pedidos = new Map<string, { comprador: EstadoEmpresa; mensal: number }[]>();
   for (const comprador of empresas) {
     for (const [produto, m] of Object.entries(comprador.materiasPrimas)) {
       const p = m.pedidoAtacado;
@@ -68,32 +65,68 @@ export function etapaAtacado(ctx: Contexto): void {
       const vendedor = ctx.empresas.get(p.vendedor);
       if (!vendedor || vendedor.id === comprador.id || vendedor.mercado !== comprador.mercado) continue;
       const chave = `${vendedor.id}|${produto}`;
-      if (!disponivel.has(chave)) continue;
       if (!pedidos.has(chave)) pedidos.set(chave, []);
-      pedidos.get(chave)!.push({ comprador, quantidade: p.quantidadeMensal / n });
+      pedidos.get(chave)!.push({ comprador, mensal: p.quantidadeMensal });
     }
   }
 
+  // 3. Lotes únicos de desova (troca de atividade): cada pedido vigente leva até a sua quantidade mensal,
+  //    na proporção quando o lote não basta. Quem já recebeu o lote ainda pode comprar a parte do dia.
+  const lotes = new Map<string, { quantidade: number; preco: Centavos }>();
+  for (const l of ctx.lotesAtacado) lotes.set(`${l.empresa}|${l.produto}`, { quantidade: l.quantidade, preco: l.preco });
+  const vendidoNoLote = new Map<string, number>();
   for (const vendedor of empresas) {
     for (const [produto, m] of Object.entries(vendedor.materiasPrimas)) {
-      const lista = pedidos.get(`${vendedor.id}|${produto}`);
-      if (!lista || !m.ofertaAtacado) continue;
-      let total = 0;
-      for (const x of lista) total += x.quantidade;
-      const limite = disponivel.get(`${vendedor.id}|${produto}`)!;
-      const escala = total > limite ? limite / total : 1;
+      const chave = `${vendedor.id}|${produto}`;
+      const lote = lotes.get(chave);
+      const lista = pedidos.get(chave);
+      if (!lote || !lista) continue;
+      const total = soma(lista.map((x) => x.mensal));
+      const disponivelNoLote = Math.min(lote.quantidade, m.estoque.quantidade);
+      const escala = total > disponivelNoLote ? disponivelNoLote / total : 1;
       const qualidade = m.estoque.qualidade;
-      for (const x of lista) {
-        const quantidade = Math.min(x.quantidade * escala, m.estoque.quantidade);
-        if (quantidade < QUANTIDADE_MINIMA) continue;
-        const valor = arredondarCentavos(quantidade * m.ofertaAtacado.preco);
-        const custo = darSaida(m.estoque, quantidade);
-        movimentarCaixa(vendedor, ctx.lancamentos, valor, "operacional", "venda no atacado", x.comprador.id, vendedor.id, produto);
-        reconhecerResultado(vendedor, "receita", valor);
-        reconhecerResultado(vendedor, "cpv", custo);
-        movimentarCaixa(x.comprador, ctx.lancamentos, -valor, "operacional", "compra no atacado", vendedor.id, x.comprador.id, produto);
-        darEntrada(x.comprador.materiasPrimas[produto]!.estoque, quantidade, valor, qualidade);
-      }
+      let vendido = 0;
+      for (const x of lista) vendido += negociar(ctx, vendedor, x.comprador, produto, x.mensal * escala, lote.preco, qualidade);
+      vendidoNoLote.set(chave, vendido);
     }
   }
+
+  // 4. Atacado do dia: disponível = menor entre a oferta diária e o estoque medido antes das entregas
+  //    (menos o que saiu no lote), atendido na proporção quando os pedidos o excedem.
+  for (const vendedor of empresas) {
+    for (const [produto, m] of Object.entries(vendedor.materiasPrimas)) {
+      const chave = `${vendedor.id}|${produto}`;
+      const lista = pedidos.get(chave);
+      if (!lista || !m.ofertaAtacado) continue;
+      const limite = Math.min(m.ofertaAtacado.quantidadeMensal / n, estoqueInicial.get(chave)! - (vendidoNoLote.get(chave) ?? 0));
+      const total = soma(lista.map((x) => x.mensal / n));
+      const escala = total > limite ? limite / total : 1;
+      const qualidade = m.estoque.qualidade;
+      for (const x of lista) negociar(ctx, vendedor, x.comprador, produto, (x.mensal / n) * escala, m.ofertaAtacado.preco, qualidade);
+    }
+  }
+}
+
+function soma(valores: readonly number[]): number {
+  let total = 0;
+  for (const v of valores) total += v;
+  return total;
+}
+
+/**
+ * Uma entrega do vendedor ao comprador, limitada ao estoque do vendedor. Devolve a quantidade entregue.
+ * O mesmo valor em centavos sai do comprador e entra no vendedor.
+ */
+function negociar(ctx: Contexto, vendedor: EstadoEmpresa, comprador: EstadoEmpresa, produto: string, quantidadePedida: number, preco: Centavos, qualidade: number): number {
+  const estoque = vendedor.materiasPrimas[produto]!.estoque;
+  const quantidade = Math.min(quantidadePedida, estoque.quantidade);
+  if (quantidade < QUANTIDADE_MINIMA) return 0;
+  const valor = arredondarCentavos(quantidade * preco);
+  const custo = darSaida(estoque, quantidade);
+  movimentarCaixa(vendedor, ctx.lancamentos, valor, "operacional", "venda no atacado", comprador.id, vendedor.id, produto);
+  reconhecerResultado(vendedor, "receita", valor);
+  reconhecerResultado(vendedor, "cpv", custo);
+  movimentarCaixa(comprador, ctx.lancamentos, -valor, "operacional", "compra no atacado", vendedor.id, comprador.id, produto);
+  darEntrada(comprador.materiasPrimas[produto]!.estoque, quantidade, valor, qualidade);
+  return quantidade;
 }

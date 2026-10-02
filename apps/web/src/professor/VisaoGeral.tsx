@@ -187,6 +187,8 @@ export function textoDoAviso(a: AvisoDoMotor, nomeEmpresa: (id: string) => strin
       return `${nomeEmpresa(a.empresa)} concluiu a fábrica de ${nomeProduto(a.produto)}.`;
     case "fazenda_concluida":
       return `${nomeEmpresa(a.empresa)} concluiu a fazenda de ${a.atividade.replaceAll("_", " ")}.`;
+    case "conversao_concluida":
+      return `${nomeEmpresa(a.empresa)} concluiu a conversão da fazenda para ${a.atividade.replaceAll("_", " ")}.`;
     case "estoque_cheio":
       return `${nomeEmpresa(a.empresa)} está com o estoque de ${nomeProduto(a.produto).replaceAll("_", " ")} cheio há dias.`;
     case "ruptura_de_estoque":
