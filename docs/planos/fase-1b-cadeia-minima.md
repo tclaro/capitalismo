@@ -81,7 +81,7 @@ Fora desta fase: calendário agrícola, extração, fábricas de semiacabados, r
 
 | # | Entrega | Verificação |
 |---|---|---|
-| 1 | **Catálogo e preset**: bloco de parâmetros da cadeia, `cadeia/minima`, validações | Testes do catálogo; `validarPreset`; o golden do núcleo não muda |
+| 1 | **Catálogo e preset**: bloco de parâmetros da cadeia, `cadeia/minima`, validações. **Concluída em 02/10/2026** (o preset fica fora da lista de salas até o módulo existir) | Testes do catálogo; `validarPreset`; o golden do núcleo não muda |
 | 2 | **Estado do motor**: tipos, `estoquesMP`, fazendas, versão 2 com migração, módulo aceito, balanço, depreciação, invariantes de teste | Invariantes existentes mais balanço fechado com fazendas; migração v1→v2 |
 | 3 | **Fazendas**: construir, ajustar, produzir (passo 4), coprodutos, qualidade por experiência | Testes unitários e de propriedade (estoque e valor conservados) |
 | 4 | **Origem dos insumos**: fábrica e carne/frango a partir do estoque próprio, completando com o fornecedor | Custo e qualidade esperados em casos calculados à mão |

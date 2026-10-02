@@ -177,6 +177,62 @@ export interface ParametrosMercado {
   readonly fatorCiclo: number;
 }
 
+export type TipoDeFazenda = "lavoura" | "pecuaria";
+
+/** O que uma atividade de fazenda produz. A primeira entrada é o produto principal e tem proporção 1. */
+export interface ProducaoDaAtividade {
+  /** Matéria-prima produzida (id do produto no preset). */
+  readonly produto: string;
+  /** Unidades deste produto por unidade-base produzida (1 = principal; 0,5 = coproduto na metade da quantidade). */
+  readonly proporcao: number;
+}
+
+/**
+ * Atividade de uma fazenda (seção 6.16): gado de corte, gado leiteiro, frango, uma cultura. Cada fazenda
+ * tem uma atividade por vez, e os custos da instalação são os da atividade.
+ */
+export interface AtividadeDeFazenda {
+  readonly id: string;
+  readonly nome: string;
+  readonly tipo: TipoDeFazenda;
+  readonly produz: readonly ProducaoDaAtividade[];
+  /** Custo variável por unidade-base produzida (a do produto principal), em centavos. */
+  readonly custoVariavelPorUnidade: ValorVariavel;
+  /** Qualidade da produção de uma fazenda nova (0–100). */
+  readonly qualidadeBase: ValorVariavel;
+  /** Investimento para construir a fazenda, em centavos. */
+  readonly capex: number;
+  readonly prazoConstrucaoDias: number;
+  /** Custo fixo mensal da fazenda em operação, em centavos. */
+  readonly custoFixoMensal: number;
+  /** Produção máxima por dia, em unidades-base. */
+  readonly capacidadeUnidadesPorDia: number;
+  /** Dias de produção à capacidade nominal que cabem no estoque de cada produto da fazenda. */
+  readonly diasDeArmazenagem: number;
+  readonly vidaUtilMeses: number;
+}
+
+/**
+ * Cadeia produtiva mínima (camada 3, seção 6.16). Bloco opcional: sem ele o preset não tem fazendas, e o
+ * módulo `cadeia_produtiva` não faz sentido.
+ */
+export interface ParametrosCadeia {
+  readonly atividades: readonly AtividadeDeFazenda[];
+  /** A qualidade da produção cresce com a experiência da fazenda, medida em meses de produção à capacidade nominal. */
+  readonly experiencia: {
+    /** Pontos de qualidade ganhos por mês de experiência. */
+    readonly ganhoQualidadePorMes: number;
+    /** Teto da qualidade (0–100). */
+    readonly qualidadeMaxima: number;
+  };
+  /** Troca de atividade de uma fazenda: custo e prazo iguais para qualquer troca. */
+  readonly conversao: { readonly custo: number; readonly prazoDias: number };
+  /** Comprador de último recurso: paga `fatorPiso` × o preço do fornecedor externo, só quando a equipe manda vender. */
+  readonly cooperativa: { readonly fatorPiso: number };
+  /** Destruição de estoque: custo por unidade destruída, em centavos (pode ser fracionário). */
+  readonly descarte: { readonly custoPorUnidade: number };
+}
+
 export interface Preset {
   readonly id: string;
   readonly nome: string;
@@ -191,6 +247,8 @@ export interface Preset {
   readonly vendas: ParametrosVendas;
   readonly pontoDeVenda: ParametrosPontoDeVenda;
   readonly financeiro: ParametrosFinanceiros;
+  /** Presente só nos presets com a camada 3 (cadeia produtiva). */
+  readonly cadeia?: ParametrosCadeia;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -257,6 +315,56 @@ class Coletor {
       );
     }
   }
+}
+
+function validarCadeia(c: Coletor, cadeia: ParametrosCadeia, porId: ReadonlyMap<string, ProdutoDoPreset>): void {
+  c.exigir(cadeia.atividades.length >= 1, "cadeia.atividades: precisa de pelo menos uma atividade");
+  const ids = new Set<string>();
+  for (const a of cadeia.atividades) {
+    const o = `cadeia.atividades[${a.id}]`;
+    c.exigir(a.id.length > 0, "cadeia.atividades: id não pode ser vazio");
+    c.exigir(!ids.has(a.id), `${o}: id duplicado`);
+    ids.add(a.id);
+    c.exigir(a.nome.length > 0, `${o}.nome: não pode ser vazio`);
+    c.exigir(a.tipo === "lavoura" || a.tipo === "pecuaria", `${o}.tipo: deve ser "lavoura" ou "pecuaria" (recebido ${String(a.tipo)})`);
+
+    c.exigir(a.produz.length >= 1, `${o}.produz: precisa de pelo menos um produto`);
+    const vistos = new Set<string>();
+    a.produz.forEach((pr, k) => {
+      const op = `${o}.produz[${pr.produto}]`;
+      c.exigir(!vistos.has(pr.produto), `${op}: produto repetido`);
+      vistos.add(pr.produto);
+      c.positivo(pr.proporcao, `${op}.proporcao`);
+      if (k === 0) c.exigir(pr.proporcao === 1, `${op}.proporcao: o produto principal tem proporção 1 (recebido ${pr.proporcao})`);
+      const alvo = porId.get(pr.produto);
+      c.exigir(alvo !== undefined, `${op}: produto não existe no preset`);
+      if (alvo) {
+        c.exigir(alvo.nivel === "materia_prima", `${op}: a fazenda só produz matéria-prima (nível "${alvo.nivel}")`);
+        c.exigir(alvo.fornecedor !== undefined, `${op}: matéria-prima precisa de fornecedor externo (é o teto de preço)`);
+      }
+    });
+
+    c.variavel(a.custoVariavelPorUnidade, `${o}.custoVariavelPorUnidade`, (x, oo) => c.naoNegativo(x, oo));
+    c.variavel(a.qualidadeBase, `${o}.qualidadeBase`, (x, oo) => c.entre(x, 0, 100, oo));
+    c.inteiroNaoNegativo(a.capex, `${o}.capex`);
+    c.inteiroNaoNegativo(a.prazoConstrucaoDias, `${o}.prazoConstrucaoDias`);
+    c.inteiroNaoNegativo(a.custoFixoMensal, `${o}.custoFixoMensal`);
+    c.positivo(a.capacidadeUnidadesPorDia, `${o}.capacidadeUnidadesPorDia`);
+    c.positivo(a.diasDeArmazenagem, `${o}.diasDeArmazenagem`);
+    c.inteiroPositivo(a.vidaUtilMeses, `${o}.vidaUtilMeses`);
+  }
+
+  c.naoNegativo(cadeia.experiencia.ganhoQualidadePorMes, "cadeia.experiencia.ganhoQualidadePorMes");
+  c.entre(cadeia.experiencia.qualidadeMaxima, 0, 100, "cadeia.experiencia.qualidadeMaxima");
+  c.inteiroNaoNegativo(cadeia.conversao.custo, "cadeia.conversao.custo");
+  c.inteiroNaoNegativo(cadeia.conversao.prazoDias, "cadeia.conversao.prazoDias");
+  if (c.finito(cadeia.cooperativa.fatorPiso, "cadeia.cooperativa.fatorPiso")) {
+    c.exigir(
+      cadeia.cooperativa.fatorPiso > 0 && cadeia.cooperativa.fatorPiso <= 1,
+      `cadeia.cooperativa.fatorPiso: deve estar entre 0 (exclusivo) e 1 (recebido ${cadeia.cooperativa.fatorPiso})`,
+    );
+  }
+  c.naoNegativo(cadeia.descarte.custoPorUnidade, "cadeia.descarte.custoPorUnidade");
 }
 
 /**
@@ -394,6 +502,8 @@ export function validarPreset(preset: Preset): string[] {
   c.positivo(pv.capacidadePorDia, "pontoDeVenda.capacidadePorDia");
   c.inteiroPositivo(pv.vidaUtilMeses, "pontoDeVenda.vidaUtilMeses");
   c.inteiroNaoNegativo(pv.iniciais, "pontoDeVenda.iniciais");
+
+  if (preset.cadeia) validarCadeia(c, preset.cadeia, porId);
 
   const f = preset.financeiro;
   c.inteiroNaoNegativo(f.caixaInicial, "financeiro.caixaInicial");

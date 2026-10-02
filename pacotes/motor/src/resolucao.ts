@@ -7,8 +7,8 @@
  */
 import { type Gerador, criarGerador, uniforme } from "./aleatorio";
 import { arredondarCentavos } from "./dinheiro";
-import { type Preset, type ProdutoDoPreset, type ValorVariavel, validarPreset } from "./preset";
-import type { ParametrosResolvidos, ProdutoResolvido } from "./tipos";
+import { type ParametrosCadeia, type Preset, type ProdutoDoPreset, type ValorVariavel, validarPreset } from "./preset";
+import type { CadeiaResolvida, ParametrosResolvidos, ProdutoResolvido } from "./tipos";
 
 export class PresetInvalido extends Error {
   constructor(readonly erros: readonly string[]) {
@@ -80,6 +80,38 @@ function resolverProduto(p: ProdutoDoPreset, semente: string): ProdutoResolvido 
   };
 }
 
+/**
+ * Cada atividade usa um fluxo próprio (`cenario:atividade:<id>`): acrescentar uma atividade não muda os
+ * sorteios das demais, nem os dos produtos. A ordem dos sorteios abaixo é contrato de determinismo.
+ */
+function resolverCadeia(cadeia: ParametrosCadeia, semente: string): CadeiaResolvida {
+  return {
+    atividades: cadeia.atividades.map((a) => {
+      const g = criarGerador(semente, `cenario:atividade:${a.id}`);
+      const custoVariavelPorUnidade = Math.max(0, arredondarCentavos(sortearValor(a.custoVariavelPorUnidade, g)));
+      const qualidadeBase = Math.min(100, Math.max(0, sortearValor(a.qualidadeBase, g)));
+      return {
+        id: a.id,
+        nome: a.nome,
+        tipo: a.tipo,
+        produz: a.produz.map((p) => ({ produto: p.produto, proporcao: p.proporcao })),
+        custoVariavelPorUnidade,
+        qualidadeBase,
+        capex: a.capex,
+        prazoConstrucaoDias: a.prazoConstrucaoDias,
+        custoFixoMensal: a.custoFixoMensal,
+        capacidadeUnidadesPorDia: a.capacidadeUnidadesPorDia,
+        diasDeArmazenagem: a.diasDeArmazenagem,
+        vidaUtilMeses: a.vidaUtilMeses,
+      };
+    }),
+    experiencia: { ...cadeia.experiencia },
+    conversao: { ...cadeia.conversao },
+    cooperativa: { ...cadeia.cooperativa },
+    descarte: { ...cadeia.descarte },
+  };
+}
+
 /** Valida o preset e sorteia os valores variáveis. Lança `PresetInvalido` se houver erros. */
 export function resolverPreset(preset: Preset, semente: string): ParametrosResolvidos {
   const erros = validarPreset(preset);
@@ -105,5 +137,6 @@ export function resolverPreset(preset: Preset, semente: string): ParametrosResol
     vendas: { ...preset.vendas },
     pontoDeVenda: { ...preset.pontoDeVenda },
     financeiro: { ...preset.financeiro },
+    cadeia: preset.cadeia ? resolverCadeia(preset.cadeia, semente) : null,
   };
 }

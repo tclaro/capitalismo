@@ -68,6 +68,19 @@ export const RECEITAS_MANUAL: readonly ReceitaManual[] = [
     pesoTecnologia: 50,
   },
   {
+    // Proporção do manual, informada pelo autor em 02/10/2026: 4 de couro e 1 de tecido para 1 jaqueta.
+    // PROVISÓRIO: a unidade (libras, como no sapato, que usa os mesmos insumos) e os pesos de qualidade
+    // seguem o sapato até conferirmos o Apêndice B / a wiki (docs/planos/fase-1b-cadeia-minima.md, 4.1).
+    produto: "jaqueta_de_couro",
+    unidadesPorLote: 1,
+    unidadeLote: "unidade",
+    insumos: [
+      { produto: "couro", quantidade: 4, unidade: "lb", pesoQualidade: 45 },
+      { produto: "tecido", quantidade: 1, unidade: "lb", pesoQualidade: 5 },
+    ],
+    pesoTecnologia: 50,
+  },
+  {
     produto: "carteira",
     unidadesPorLote: 3,
     unidadeLote: "unidade",

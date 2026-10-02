@@ -106,5 +106,23 @@ export function validarPresetContraArvore(preset: Preset, arvore: readonly Produ
     }
   }
 
+  // Cadeia: cada atividade produz matérias-primas da origem certa (lavoura ou pecuária) e, na pecuária,
+  // de um rebanho em comum (gado de corte: carne e couro vêm do gado).
+  for (const a of preset.cadeia?.atividades ?? []) {
+    const onde = `${preset.id}: atividade ${a.id}`;
+    const origens = a.produz.map((pr) => porId.get(pr.produto)?.origem);
+    origens.forEach((o, k) => {
+      const alvo = a.produz[k]!.produto;
+      if (!o) erros.push(`${onde}: "${alvo}" não é matéria-prima de fazenda na árvore`);
+      else if (o.tipo === "extracao") erros.push(`${onde}: "${alvo}" vem de extração, e a cadeia mínima não tem extração`);
+      else if (o.tipo !== a.tipo) erros.push(`${onde}: "${alvo}" vem de ${o.tipo}, mas a atividade é de ${a.tipo}`);
+    });
+    const rebanhos = origens.map((o) => (o?.tipo === "pecuaria" ? o.rebanhos : null));
+    if (a.tipo === "pecuaria" && rebanhos.every((r) => r !== null)) {
+      const comuns = (rebanhos[0] ?? []).filter((r) => rebanhos.every((x) => x!.includes(r)));
+      if (comuns.length === 0) erros.push(`${onde}: os produtos não têm um rebanho em comum na árvore`);
+    }
+  }
+
   return erros;
 }

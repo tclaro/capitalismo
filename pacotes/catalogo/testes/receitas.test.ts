@@ -12,6 +12,8 @@ const APENDICE_B: [string, number, [string, number, string, number][], number][]
   ["sorvete", 20, [["leite", 2, "quart", 20], ["morango", 2, "lb", 20], ["acucar", 1, "lb", 10]], 50],
   ["sapato", 4, [["couro", 5, "lb", 45], ["tecido", 1, "lb", 5]], 50],
   ["carteira", 3, [["couro", 1, "lb", 50]], 50],
+  // Só a proporção 4:1 (couro:tecido) é do manual; a unidade e os pesos são provisórios (iguais aos do sapato).
+  ["jaqueta_de_couro", 1, [["couro", 4, "lb", 45], ["tecido", 1, "lb", 5]], 50],
 ];
 
 describe("receitas do Apêndice B", () => {

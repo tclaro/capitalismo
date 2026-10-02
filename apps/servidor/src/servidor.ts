@@ -73,9 +73,13 @@ const TESTES_GUARDADOS = 200;
 /** O WebSocket de teste fecha sozinho depois disso. */
 const DURACAO_WS_TESTE_MS = 20_000;
 
-/** Presets oferecidos na criação da sala (os de teste só por API). */
+/**
+ * Presets oferecidos na criação da sala (os de teste só por API). Os que trazem o bloco `cadeia` ficam
+ * de fora até o módulo `cadeia_produtiva` ser implementado no motor (fase 1b): sem ele, a partida seria
+ * só a camada 1, sem fazendas.
+ */
 const PRESETS_JOGAVEIS = Object.values(PRESETS)
-  .filter((p) => !p.id.startsWith("teste/"))
+  .filter((p) => !p.id.startsWith("teste/") && p.cadeia === undefined)
   .map((p) => ({ id: p.id, nome: p.nome }));
 
 export interface DadosConexao {

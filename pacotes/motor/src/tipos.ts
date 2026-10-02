@@ -9,7 +9,7 @@
 import type { Gerador } from "./aleatorio";
 import type { Centavos, Estoque } from "./dinheiro";
 import type { PesosNotaResolvidos } from "./formulas/nota";
-import type { InsumoReceita, NivelProduto } from "./preset";
+import type { InsumoReceita, NivelProduto, ProducaoDaAtividade, TipoDeFazenda } from "./preset";
 
 export const VERSAO_ESTADO = 1;
 
@@ -58,6 +58,30 @@ export interface ProdutoResolvido {
   fabricacao: FabricacaoResolvida | null;
 }
 
+export interface AtividadeResolvida {
+  id: string;
+  nome: string;
+  tipo: TipoDeFazenda;
+  produz: ProducaoDaAtividade[];
+  custoVariavelPorUnidade: Centavos;
+  qualidadeBase: number;
+  capex: Centavos;
+  prazoConstrucaoDias: number;
+  custoFixoMensal: Centavos;
+  capacidadeUnidadesPorDia: number;
+  diasDeArmazenagem: number;
+  vidaUtilMeses: number;
+}
+
+export interface CadeiaResolvida {
+  /** Na ordem do preset. */
+  atividades: AtividadeResolvida[];
+  experiencia: { ganhoQualidadePorMes: number; qualidadeMaxima: number };
+  conversao: { custo: Centavos; prazoDias: number };
+  cooperativa: { fatorPiso: number };
+  descarte: { custoPorUnidade: number };
+}
+
 export interface ParametrosResolvidos {
   presetId: string;
   presetVersao: string;
@@ -103,6 +127,8 @@ export interface ParametrosResolvidos {
     jurosEmergencialMensal: number;
     penalidadeFalenciaMensal: number;
   };
+  /** `null` nos presets sem a camada 3 (JSON não guarda `undefined`). */
+  cadeia: CadeiaResolvida | null;
 }
 
 // ---------------------------------------------------------------------------------------------
