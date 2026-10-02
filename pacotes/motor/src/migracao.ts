@@ -71,6 +71,9 @@ function migrarDe1Para2(e: Objeto): void {
   e.versaoEstado = 2;
 }
 
+/** Campos de uma matéria-prima na ordem em que `novaMateriaPrima` os cria. */
+const ORDEM_DA_MATERIA_PRIMA = ["estoque", "ofertaAtacado", "pedidoAtacado", "diasCheio", "serie"];
+
 function migrarDe2Para3(e: Objeto): void {
   if (ehObjeto(e.parametros) && ehObjeto(e.parametros.cadeia) && e.parametros.cadeia.completaComFornecedor === undefined) {
     e.parametros.cadeia.completaComFornecedor = true;
@@ -90,6 +93,20 @@ function migrarDe2Para3(e: Objeto): void {
   e.versaoEstado = 3;
 }
 
+function migrarDe3Para4(e: Objeto): void {
+  if (Array.isArray(e.empresas)) {
+    for (const emp of e.empresas) {
+      if (!ehObjeto(emp) || !ehObjeto(emp.materiasPrimas)) continue;
+      for (const [id, m] of Object.entries(emp.materiasPrimas)) {
+        if (!ehObjeto(m)) continue;
+        if (m.pedidoAtacado === undefined) m.pedidoAtacado = null;
+        emp.materiasPrimas[id] = reordenar(m, ORDEM_DA_MATERIA_PRIMA);
+      }
+    }
+  }
+  e.versaoEstado = 4;
+}
+
 /**
  * Devolve o estado na versão atual. Lança erro se a entrada não tiver versão ou se for de uma versão
  * mais nova que este motor (um motor antigo não sabe ler estado novo).
@@ -102,5 +119,6 @@ export function migrarEstado(entrada: unknown): EstadoPartida {
   const copia = JSON.parse(JSON.stringify(entrada)) as Objeto;
   if (versao === 1) migrarDe1Para2(copia);
   if (versao <= 2) migrarDe2Para3(copia);
+  if (versao <= 3) migrarDe3Para4(copia);
   return copia as unknown as EstadoPartida;
 }

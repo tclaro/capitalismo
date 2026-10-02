@@ -19,8 +19,9 @@ import type { InsumoReceita, NivelProduto, ProducaoDaAtividade, TipoDeFazenda } 
  *   `custo_fixo_fazenda` e `perda_de_estoque` da DRE.
  * - 3: origem dos insumos: `origemInsumos` e `origemCompraPronta` na decisão de cada oferta e
  *   `parametros.cadeia.completaComFornecedor`.
+ * - 4: atacado: `pedidoAtacado` em cada matéria-prima.
  */
-export const VERSAO_ESTADO = 3;
+export const VERSAO_ESTADO = 4;
 
 /** Tamanho da série de evolução do estoque guardada por matéria-prima (últimos dias, seção 6.16). */
 export const DIAS_DA_SERIE_DE_ESTOQUE = 30;
@@ -237,6 +238,13 @@ export interface OfertaAtacado {
   quantidadeMensal: number;
 }
 
+/** Pedido vigente de compra no atacado: quantidade por mês, entregue por dia pelo vendedor (se ele tiver oferta e estoque). */
+export interface PedidoAtacado {
+  /** Id da empresa vendedora (do mesmo mercado). */
+  vendedor: string;
+  quantidadeMensal: number;
+}
+
 /**
  * Estoque de uma matéria-prima da empresa (produção das fazendas e compras no atacado), com custo
  * médio e qualidade como nas ofertas de varejo. Existe uma entrada por matéria-prima que alguma
@@ -246,6 +254,8 @@ export interface EstadoMateriaPrima {
   estoque: Estoque;
   /** `null` = não oferece no atacado. */
   ofertaAtacado: OfertaAtacado | null;
+  /** `null` = não compra no atacado. */
+  pedidoAtacado: PedidoAtacado | null;
   /** Dias seguidos com o estoque em 100% da capacidade (zera ao sair de 100%). */
   diasCheio: number;
   /** Fração da capacidade (0 a 1) ao fim de cada um dos últimos dias, a mais recente por último. */
@@ -382,6 +392,12 @@ export type Decisao =
   | { tipo: "construirFazenda"; empresa: string; atividade: string; producaoMensal?: number }
   /** Camada 3: muda a produção mensal vigente (unidades-base) de uma fazenda, em obra ou em operação. */
   | { tipo: "ajustarFazenda"; empresa: string; fazenda: string; producaoMensal: number }
+  /** Camada 3: oferta de matéria-prima no atacado (preço entre o piso da cooperativa e o do fornecedor). `quantidadeMensal` 0 retira a oferta. */
+  | { tipo: "ofertarNoAtacado"; empresa: string; produto: string; preco: Centavos; quantidadeMensal: number }
+  /** Camada 3: pedido vigente de compra no atacado de outra equipe do mesmo mercado. `quantidadeMensal` 0 cancela. */
+  | { tipo: "comprarNoAtacado"; empresa: string; produto: string; vendedor: string; quantidadeMensal: number }
+  /** Camada 3: vende estoque de matéria-prima à cooperativa, ao preço-piso, neste tick (a cooperativa só compra assim). */
+  | { tipo: "venderParaCooperativa"; empresa: string; produto: string; quantidade: number }
   | { tipo: "abrirPontoDeVenda"; empresa: string; quantidade: number }
   | { tipo: "fecharPontoDeVenda"; empresa: string; quantidade: number };
 

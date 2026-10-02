@@ -60,7 +60,7 @@ describe("criação da partida com a cadeia", () => {
       expect(e.fazendas).toEqual([]);
       expect(Object.keys(e.materiasPrimas)).toEqual(MATERIAS_PRIMAS);
       for (const m of Object.values(e.materiasPrimas)) {
-        expect(m).toEqual({ estoque: { quantidade: 0, valor: 0, qualidade: 0 }, ofertaAtacado: null, diasCheio: 0, serie: [] });
+        expect(m).toEqual({ estoque: { quantidade: 0, valor: 0, qualidade: 0 }, ofertaAtacado: null, pedidoAtacado: null, diasCheio: 0, serie: [] });
       }
     }
   });
@@ -69,7 +69,7 @@ describe("criação da partida com a cadeia", () => {
     const estado = partidaComCadeia();
     empresa(estado, "emp_01").materiasPrimas.leite!.diasCheio = 5;
     empresa(estado, "emp_01").materiasPrimas.leite!.serie.push(0.5);
-    expect(empresa(estado, "emp_02").materiasPrimas.leite).toEqual({ estoque: { quantidade: 0, valor: 0, qualidade: 0 }, ofertaAtacado: null, diasCheio: 0, serie: [] });
+    expect(empresa(estado, "emp_02").materiasPrimas.leite).toEqual({ estoque: { quantidade: 0, valor: 0, qualidade: 0 }, ofertaAtacado: null, pedidoAtacado: null, diasCheio: 0, serie: [] });
   });
 
   test("com o módulo desligado, o mesmo preset não cria fazendas nem estoques de matéria-prima", () => {
@@ -210,6 +210,7 @@ describe("migração do estado gravado", () => {
     v2.versaoEstado = 2;
     delete v2.parametros.cadeia.completaComFornecedor;
     for (const e of v2.empresas) {
+      for (const m of Object.values<any>(e.materiasPrimas)) delete m.pedidoAtacado;
       for (const o of e.ofertas) {
         delete o.decisao.origemInsumos;
         delete o.decisao.origemCompraPronta;
@@ -217,6 +218,15 @@ describe("migração do estado gravado", () => {
     }
     expect(migrarEstado(v2)).toEqual(comCadeia);
     expect(JSON.stringify(migrarEstado(v2))).toBe(JSON.stringify(comCadeia));
+  });
+
+  test("estado da versão 3, com a cadeia, ganha o pedido de atacado em cada matéria-prima (e as ofertas e pedidos já existentes seguem)", () => {
+    const comCadeia = rodar(partidaComCadeia(true), 20).estado;
+    empresa(comCadeia, "emp_01").materiasPrimas.leite!.ofertaAtacado = { preco: 250, quantidadeMensal: 100 };
+    const v3 = JSON.parse(JSON.stringify(comCadeia)) as Record<string, any>;
+    v3.versaoEstado = 3;
+    for (const e of v3.empresas) for (const m of Object.values<any>(e.materiasPrimas)) delete m.pedidoAtacado;
+    expect(JSON.stringify(migrarEstado(v3))).toBe(JSON.stringify(comCadeia));
   });
 
   test("migrar não altera a entrada", () => {

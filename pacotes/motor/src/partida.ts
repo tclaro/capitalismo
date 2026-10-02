@@ -57,7 +57,7 @@ export function idSequencial(prefixo: string, numero: number): string {
 }
 
 function novaMateriaPrima(): EstadoMateriaPrima {
-  return { estoque: estoqueVazio(), ofertaAtacado: null, diasCheio: 0, serie: [] };
+  return { estoque: estoqueVazio(), ofertaAtacado: null, pedidoAtacado: null, diasCheio: 0, serie: [] };
 }
 
 /** Matérias-primas que alguma atividade produz, em ordem alfabética. */

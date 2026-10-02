@@ -74,7 +74,8 @@ export function numerosInvalidos(valor: unknown, caminho = "$"): string[] {
  * - ativo = passivo + patrimônio líquido (exato);
  * - dinheiro em centavos inteiros; nenhum número inválido no estado;
  * - estoques (de varejo e de matéria-prima) não negativos; qualidade, reconhecimento e fidelidade dentro dos limites;
- * - camada 3: matérias-primas em ordem alfabética, séries de estoque limitadas, fazendas com depreciação coerente;
+ * - camada 3: matérias-primas em ordem alfabética, séries de estoque limitadas, fazendas com depreciação coerente,
+ *   atacado com soma zero entre as empresas;
  * - participações das ofertas ativas somam 1 por (mercado, produto).
  */
 export function verificarInvariantes(anterior: EstadoPartida, resultado: ResultadoTick): void {
@@ -108,6 +109,7 @@ export function verificarInvariantes(anterior: EstadoPartida, resultado: Resulta
       expect({ ...onde, ok: m.estoque.qualidade >= 0 && m.estoque.qualidade <= 100 + 1e-9 }).toEqual({ ...onde, ok: true });
       expect({ ...onde, ok: Number.isInteger(m.diasCheio) && m.diasCheio >= 0 }).toEqual({ ...onde, ok: true });
       expect({ ...onde, ok: m.serie.length <= DIAS_DA_SERIE_DE_ESTOQUE && m.serie.every((x) => x >= 0 && x <= 1) }).toEqual({ ...onde, ok: true });
+      if (m.pedidoAtacado) expect({ ...onde, ok: typeof m.pedidoAtacado.vendedor === "string" && m.pedidoAtacado.quantidadeMensal > 0 }).toEqual({ ...onde, ok: true });
       if (m.ofertaAtacado) expect({ ...onde, ok: Number.isInteger(m.ofertaAtacado.preco) && m.ofertaAtacado.preco > 0 && m.ofertaAtacado.quantidadeMensal >= 0 }).toEqual({ ...onde, ok: true });
     }
     for (const fz of e.fazendas) {
@@ -130,6 +132,11 @@ export function verificarInvariantes(anterior: EstadoPartida, resultado: Resulta
       expect(o.fidelidade).toBeLessThanOrEqual(100);
     }
   }
+
+  // Atacado: o que as empresas pagam e o que recebem soma zero em cada tick.
+  let atacado = 0;
+  for (const l of resultado.lancamentos) if (l.descricao === "compra no atacado" || l.descricao === "venda no atacado") atacado += l.valor;
+  expect({ tick: estado.tick, atacado }).toEqual({ tick: estado.tick, atacado: 0 });
 
   const somas = new Map<string, { soma: number; ativas: number }>();
   for (const h of resultado.historico.ofertas) {

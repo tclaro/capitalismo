@@ -7,8 +7,10 @@
  * responder ao aluno na hora; o `passo` revalida ao aplicar e devolve rejeições.
  */
 import { movimentarCaixa, reconhecerResultado } from "./contabilidade";
+import { precoDaCooperativa } from "./atacado";
 import { type Contexto, prazoEmTicks } from "./contexto";
 import { tetoDePreco } from "./formulas/nota";
+import type { Centavos } from "./dinheiro";
 import { idSequencial } from "./partida";
 import type { CadeiaResolvida, Decisao, EstadoEmpresa, EstadoPartida } from "./tipos";
 
@@ -28,6 +30,19 @@ function quantidadeValida(v: unknown): v is number {
 /** Parâmetros da cadeia se o módulo `cadeia_produtiva` está ligado na partida; senão, `null`. */
 function cadeiaAtiva(estado: EstadoPartida): CadeiaResolvida | null {
   return estado.modulos.includes("cadeia_produtiva") ? estado.parametros.cadeia : null;
+}
+
+/** Motivo de a empresa não poder negociar a matéria-prima (módulo desligado ou produto sem estoque de matéria-prima), ou `null`. */
+function motivoDaMateriaPrima(estado: EstadoPartida, empresa: EstadoEmpresa, produto: string): string | null {
+  if (!cadeiaAtiva(estado)) return "a cadeia produtiva não está ativa nesta partida";
+  if (empresa.materiasPrimas[produto] === undefined) return `"${String(produto)}" não é matéria-prima das fazendas desta partida`;
+  return null;
+}
+
+/** Faixa de preço no atacado: do piso da cooperativa ao preço do fornecedor externo (centavos por unidade). */
+export function faixaDePrecoNoAtacado(estado: EstadoPartida, produto: string): { piso: Centavos; teto: Centavos } {
+  const teto = estado.parametros.produtos.find((p) => p.id === produto)!.fornecedor!.preco;
+  return { piso: precoDaCooperativa(teto, estado.parametros.cadeia!.cooperativa.fatorPiso), teto };
 }
 
 /** Motivo de uma origem não valer para a matéria-prima na empresa, ou `null`. A origem própria exige uma fazenda possível. */
@@ -101,6 +116,34 @@ export function validarDecisao(estado: EstadoPartida, d: Decisao): string | null
       if (!cadeiaAtiva(estado)) return "a cadeia produtiva não está ativa nesta partida";
       if (!empresa.fazendas.some((f) => f.id === d.fazenda)) return `a empresa não tem a fazenda "${d.fazenda}"`;
       if (!quantidadeValida(d.producaoMensal)) return "quantidade de produção inválida";
+      return null;
+    }
+    case "ofertarNoAtacado": {
+      const motivoBase = motivoDaMateriaPrima(estado, empresa, d.produto);
+      if (motivoBase !== null) return motivoBase;
+      if (!quantidadeValida(d.quantidadeMensal)) return "quantidade de oferta inválida";
+      if (d.quantidadeMensal > 0) {
+        const { piso, teto } = faixaDePrecoNoAtacado(estado, d.produto);
+        if (!Number.isInteger(d.preco) || d.preco < piso || d.preco > teto) return `preço no atacado deve ser inteiro entre ${piso} (piso da cooperativa) e ${teto} (fornecedor externo) centavos`;
+      }
+      return null;
+    }
+    case "comprarNoAtacado": {
+      const motivoBase = motivoDaMateriaPrima(estado, empresa, d.produto);
+      if (motivoBase !== null) return motivoBase;
+      if (!quantidadeValida(d.quantidadeMensal)) return "quantidade de compra inválida";
+      if (d.quantidadeMensal > 0) {
+        const vendedor = estado.empresas.find((e) => e.id === d.vendedor);
+        if (!vendedor) return `vendedor "${String(d.vendedor)}" não existe`;
+        if (vendedor.id === empresa.id) return "a empresa não pode comprar de si mesma";
+        if (vendedor.mercado !== empresa.mercado) return "o vendedor é de outro mercado";
+      }
+      return null;
+    }
+    case "venderParaCooperativa": {
+      const motivoBase = motivoDaMateriaPrima(estado, empresa, d.produto);
+      if (motivoBase !== null) return motivoBase;
+      if (!quantidadeValida(d.quantidade) || d.quantidade <= 0) return "quantidade para a cooperativa inválida";
       return null;
     }
     case "abrirPontoDeVenda":
@@ -179,6 +222,18 @@ export function aplicarDecisao(ctx: Contexto, d: Decisao): void {
     }
     case "ajustarFazenda": {
       empresa.fazendas.find((f) => f.id === d.fazenda)!.producaoMensal = d.producaoMensal;
+      return;
+    }
+    case "ofertarNoAtacado": {
+      empresa.materiasPrimas[d.produto]!.ofertaAtacado = d.quantidadeMensal > 0 ? { preco: d.preco, quantidadeMensal: d.quantidadeMensal } : null;
+      return;
+    }
+    case "comprarNoAtacado": {
+      empresa.materiasPrimas[d.produto]!.pedidoAtacado = d.quantidadeMensal > 0 ? { vendedor: d.vendedor, quantidadeMensal: d.quantidadeMensal } : null;
+      return;
+    }
+    case "venderParaCooperativa": {
+      ctx.vendasCooperativa.push({ empresa: empresa.id, produto: d.produto, quantidade: d.quantidade });
       return;
     }
     case "abrirPontoDeVenda": {

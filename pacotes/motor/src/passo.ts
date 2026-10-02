@@ -16,6 +16,7 @@ import {
   etapaObras,
   etapaPublicidade,
 } from "./etapas";
+import { etapaAtacado } from "./atacado";
 import { etapaCustoFixoFabricas, etapaFabricacao } from "./fabricacao";
 import { etapaCustosDasFazendas, etapaEvolucaoDoEstoque, etapaProducaoDasFazendas } from "./fazendas";
 import { etapaCreditoEmergencial, etapaDepreciacaoEIR, etapaFechamentoMensal, etapaJurosEmergenciais } from "./financeiro";
@@ -34,15 +35,13 @@ interface Etapa {
   executar: (ctx: Contexto, entradas: EntradasTick, memoria: Memoria) => void;
 }
 
-const nada = () => {};
-
 /** Registro das etapas, na ordem da seção 6.15. */
 export const ETAPAS: readonly Etapa[] = [
   { passo: 1, nome: "eventos", modulo: "nucleo", executar: (ctx, e) => etapaEventos(ctx, e) },
   { passo: 2, nome: "decisões", modulo: "nucleo", executar: (ctx, e) => etapaDecisoes(ctx, e) },
   { passo: 3, nome: "obras", modulo: "nucleo", executar: (ctx) => etapaObras(ctx) },
   { passo: 4, nome: "matérias-primas (lavoura, pecuária, extração)", modulo: "cadeia_produtiva", executar: (ctx) => etapaProducaoDasFazendas(ctx) },
-  { passo: 5, nome: "atacado entre empresas", modulo: "cadeia_produtiva", executar: nada },
+  { passo: 5, nome: "atacado entre empresas", modulo: "cadeia_produtiva", executar: (ctx) => etapaAtacado(ctx) },
   { passo: 6, nome: "compras prontas", modulo: "nucleo", executar: (ctx) => etapaComprasProntas(ctx) },
   { passo: 6, nome: "P&D e fabricação", modulo: "nucleo", executar: (ctx) => etapaFabricacao(ctx) },
   { passo: 7, nome: "publicidade e reconhecimento", modulo: "nucleo", executar: (ctx) => etapaPublicidade(ctx) },

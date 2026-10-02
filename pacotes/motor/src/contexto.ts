@@ -33,6 +33,8 @@ export interface Contexto {
   rejeicoes: Rejeicao[];
   lancamentos: Lancamento[];
   fechamentos: { empresa: string; fechamento: FechamentoMensal }[];
+  /** Ordens de venda à cooperativa dadas neste tick (decisões do passo 2), executadas no passo 5. */
+  vendasCooperativa: { empresa: string; produto: string; quantidade: number }[];
   historico: HistoricoTick;
 }
 
@@ -61,6 +63,7 @@ export function criarContexto(estado: EstadoPartida): Contexto {
     rejeicoes: [],
     lancamentos: [],
     fechamentos: [],
+    vendasCooperativa: [],
     historico: { tick, mes, dia, ofertas: [], demandaTotal: [] },
   };
 }
