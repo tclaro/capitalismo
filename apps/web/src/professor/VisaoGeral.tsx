@@ -175,7 +175,7 @@ function NomeDaEmpresa({ e }: { e: Empresa }) {
 }
 
 /** Aviso do motor em texto para o professor. */
-export function textoDoAviso(a: AvisoDoMotor, nomeEmpresa: (id: string) => string, nomeProduto: (id: string) => string): string {
+export function textoDoAviso(a: AvisoDoMotor, nomeEmpresa: (id: string) => string, nomeProduto: (id: string) => string, nomeAtividade: (id: string) => string = (id) => id): string {
   switch (a.tipo) {
     case "evento":
       return a.descricao;
@@ -186,11 +186,11 @@ export function textoDoAviso(a: AvisoDoMotor, nomeEmpresa: (id: string) => strin
     case "fabrica_concluida":
       return `${nomeEmpresa(a.empresa)} concluiu a fábrica de ${nomeProduto(a.produto)}.`;
     case "fazenda_concluida":
-      return `${nomeEmpresa(a.empresa)} concluiu a fazenda de ${a.atividade.replaceAll("_", " ")}.`;
+      return `${nomeEmpresa(a.empresa)} concluiu a fazenda de ${nomeAtividade(a.atividade).toLowerCase()}.`;
     case "conversao_concluida":
-      return `${nomeEmpresa(a.empresa)} concluiu a conversão da fazenda para ${a.atividade.replaceAll("_", " ")}.`;
+      return `${nomeEmpresa(a.empresa)} concluiu a conversão da fazenda para ${nomeAtividade(a.atividade).toLowerCase()}.`;
     case "estoque_cheio":
-      return `${nomeEmpresa(a.empresa)} está com o estoque de ${nomeProduto(a.produto).replaceAll("_", " ")} cheio há dias.`;
+      return `${nomeEmpresa(a.empresa)} está com o estoque de ${nomeProduto(a.produto).toLowerCase()} cheio há dias.`;
     case "ruptura_de_estoque":
       return `${nomeEmpresa(a.empresa)} ficou sem estoque de ${nomeProduto(a.produto)}.`;
     case "caixa_negativo":
@@ -200,7 +200,8 @@ export function textoDoAviso(a: AvisoDoMotor, nomeEmpresa: (id: string) => strin
 
 export function AvisosDaSala({ visao }: { visao: VisaoProfessor }) {
   const nomeEmpresa = (id: string) => visao.empresas.find((e) => e.empresa === id)?.nome ?? id;
-  const nomeProduto = (id: string) => visao.sala.produtos.find((p) => p.id === id)?.nome ?? id;
+  const nomeProduto = (id: string) => visao.sala.produtos.find((p) => p.id === id)?.nome ?? visao.sala.materiasPrimas.find((m) => m.id === id)?.nome ?? id;
+  const nomeAtividade = (id: string) => visao.sala.atividades.find((a) => a.id === id)?.nome ?? id;
   return (
     <Secao titulo="Avisos do último dia" icone={<Bell aria-hidden size={20} />}>
       {visao.avisos.length === 0 ? (
@@ -210,7 +211,7 @@ export function AvisosDaSala({ visao }: { visao: VisaoProfessor }) {
       ) : (
         <ul className="lista-simples">
           {visao.avisos.map((a, i) => (
-            <li key={i}>{textoDoAviso(a, nomeEmpresa, nomeProduto)}</li>
+            <li key={i}>{textoDoAviso(a, nomeEmpresa, nomeProduto, nomeAtividade)}</li>
           ))}
         </ul>
       )}

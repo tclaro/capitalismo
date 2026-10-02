@@ -11,6 +11,7 @@ import { passo, VERSAO_ESTADO } from "@simulador/motor";
 import { abrirBanco, BACKUPS_MANTIDOS, MIGRACOES, pastaDeDados, versaoDoEsquema } from "../src/dados/banco";
 import { carregarSalas, ObservadorPersistente } from "../src/dados/persistencia";
 import { Repositorio } from "../src/dados/repositorio";
+import { projetarAluno } from "../src/sala/projecoes";
 import { Sala } from "../src/sala/sala";
 import { AgendadorFalso, cmd, configSala, criarEquipe } from "./ajuda";
 
@@ -269,4 +270,70 @@ describe("queda real do processo", () => {
     const r = JSON.parse(saida.trim().split("\n").at(-1)!);
     expect(r).toMatchObject({ salas: 1, status: "pausada", motivo: "manual", tick: gravado, integridade: "ok" });
   }, 30_000);
+});
+
+describe("gravação e retomada com a cadeia produtiva", () => {
+  /** Sala da cadeia: fazenda, oferta e pedido de atacado, 12 dias jogados (a obra da fazenda leva 30). */
+  function salaDaCadeia(caminho: string) {
+    const db = abrirBanco(caminho);
+    const repositorio = new Repositorio(db);
+    const relogio = new AgendadorFalso();
+    const sala = Sala.criar({ id: "sala_c", codigo: "CADE1", semente: "persistencia-cadeia", config: configSala({ presetId: "cadeia/minima", robosNasVagasVazias: "premium" }) }, relogio, new ObservadorPersistente(repositorio));
+    const ana = criarEquipe(sala, "emp_01", "Alfa", "azul", "Ana");
+    const bia = criarEquipe(sala, "emp_02", "Beta", "verde", "Bia");
+    const teto = projetarAluno(sala, ana).visao.cadeia!.faixaDoAtacado.leite!.teto;
+    expect(sala.decidir(cmd(), ana, [{ tipo: "construirFazenda", atividade: "gado_leiteiro", producaoMensal: 6000 }, { tipo: "ofertarNoAtacado", produto: "leite", preco: teto, quantidadeMensal: 3000 }])).toEqual({ ok: true });
+    expect(sala.decidir(cmd(), bia, [{ tipo: "comprarNoAtacado", produto: "leite", vendedor: "emp_01", quantidadeMensal: 900 }, { tipo: "produto", produto: LEITE, preco: 620, compraMensal: 1000 }])).toEqual({ ok: true });
+    sala.comandoRelogio(cmd(), 0, "iniciar");
+    relogio.avancar(12_000);
+    return { db, sala, ana };
+  }
+
+  test("reabrir o banco retoma a sala da cadeia idêntica, com fazendas, pedidos e séries de estoque", () => {
+    const caminho = join(pastaTemporaria(), "cadeia.db");
+    const { db, sala } = salaDaCadeia(caminho);
+    const antes = JSON.stringify(sala.estado);
+    expect(sala.estado.empresas[0]!.fazendas).toHaveLength(1);
+    expect(sala.estado.empresas[0]!.materiasPrimas.leite!.serie).toHaveLength(12);
+    sala.pararRelogio();
+    db.close();
+
+    const db2 = abrirBanco(caminho);
+    const repositorio = new Repositorio(db2);
+    const [retomada] = carregarSalas(repositorio, new AgendadorFalso(), () => new ObservadorPersistente(repositorio));
+    expect(retomada!.estado.modulos).toEqual(["nucleo", "cadeia_produtiva"]);
+    expect(JSON.stringify(retomada!.estado)).toBe(antes);
+    db2.close();
+  });
+
+  test("sala gravada na versão 3 do estado (sem o pedido de atacado) volta migrada e idêntica", () => {
+    const caminho = join(pastaTemporaria(), "cadeia-v3.db");
+    const { db, sala } = salaDaCadeia(caminho);
+    const esperado = JSON.stringify(sala.estado);
+    sala.pararRelogio();
+    /** Reescreve o estado como a versão 3 o gravaria. */
+    const comoVersao3 = (json: string): string => {
+      const e = JSON.parse(json) as Record<string, any>;
+      e.versaoEstado = 3;
+      for (const emp of e.empresas) for (const m of Object.values<any>(emp.materiasPrimas)) delete m.pedidoAtacado;
+      return JSON.stringify(e);
+    };
+    for (const tabela of ["estado_atual", "estado_fim_mes"]) {
+      const linhas = db.query(`SELECT rowid AS id, estado_json FROM ${tabela}`).all() as { id: number; estado_json: string }[];
+      for (const l of linhas) db.query(`UPDATE ${tabela} SET estado_json = ? WHERE rowid = ?`).run(comoVersao3(l.estado_json), l.id);
+    }
+    expect(JSON.parse((db.query("SELECT estado_json FROM estado_atual").get() as { estado_json: string }).estado_json).versaoEstado).toBe(3);
+    db.close();
+
+    const db2 = abrirBanco(caminho);
+    const repositorio = new Repositorio(db2);
+    const [retomada] = carregarSalas(repositorio, new AgendadorFalso(), () => new ObservadorPersistente(repositorio));
+    // O pedido da Beta se perdeu na gravação antiga (a versão 3 não o tinha): o resto é igual e o campo volta como null.
+    const migrado = JSON.parse(JSON.stringify(retomada!.estado));
+    expect(migrado.versaoEstado).toBe(VERSAO_ESTADO);
+    const original = JSON.parse(esperado);
+    original.empresas[1].materiasPrimas.leite.pedidoAtacado = null;
+    expect(JSON.stringify(migrado)).toBe(JSON.stringify(original));
+    db2.close();
+  });
 });

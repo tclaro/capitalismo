@@ -75,8 +75,8 @@ const DURACAO_WS_TESTE_MS = 20_000;
 
 /**
  * Presets oferecidos na criação da sala (os de teste só por API). Os que trazem o bloco `cadeia` ficam
- * de fora até o módulo `cadeia_produtiva` ser implementado no motor (fase 1b): sem ele, a partida seria
- * só a camada 1, sem fazendas.
+ * de fora até a tela da cadeia existir (fase 1b, entrega 8): o motor, o protocolo e as projeções já
+ * funcionam (a sala liga o módulo sozinha), mas sem a tela o aluno não vê nem comanda as fazendas.
  */
 const PRESETS_JOGAVEIS = Object.values(PRESETS)
   .filter((p) => !p.id.startsWith("teste/") && p.cadeia === undefined)

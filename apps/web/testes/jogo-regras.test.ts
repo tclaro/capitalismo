@@ -25,6 +25,7 @@ import {
   semanaGlobal,
   seriesDeParticipacao,
   subtituloDaData,
+  textoDoAviso,
   topoDoEixo,
   validarCampo,
 } from "../src/aluno/jogo";
@@ -241,3 +242,17 @@ describe("formatos de largura estável", () => {
 // Garantia de tipo: as fixtures produzem a visão real.
 const _v: (s: ReturnType<typeof salaDeExemplo>) => VisaoAluno = (s) => s.visaoAluno(s.membros.ana);
 void _v;
+
+describe("avisos da cadeia", () => {
+  test("usam os nomes das atividades e das matérias-primas que a sala informa (e o id quando não conhecem)", () => {
+    const s = salaDeExemplo({ presetId: "cadeia/minima" });
+    const v = s.visaoAluno(s.membros.ana);
+    expect(textoDoAviso({ tipo: "fazenda_concluida", empresa: "emp_01", atividade: "gado_de_corte" }, v)).toBe("A fazenda de gado de corte ficou pronta: já dá para produzir.");
+    expect(textoDoAviso({ tipo: "conversao_concluida", empresa: "emp_01", atividade: "morango" }, v)).toBe("A fazenda virou morango: já dá para produzir.");
+    expect(textoDoAviso({ tipo: "estoque_cheio", empresa: "emp_01", produto: "couro" }, v)).toBe("O estoque de couro está cheio há dias: a produção da fazenda vai parar.");
+    expect(textoDoAviso({ tipo: "fazenda_concluida", empresa: "emp_01", atividade: "desconhecida" }, v)).toContain("desconhecida");
+    // Sem a cadeia, os mesmos avisos não quebram.
+    const c = salaDeExemplo();
+    expect(textoDoAviso({ tipo: "estoque_cheio", empresa: "emp_01", produto: "couro" }, c.visaoAluno(c.membros.ana))).toContain("couro");
+  });
+});

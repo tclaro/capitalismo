@@ -17,6 +17,10 @@ const centavos = inteiro(0, 1e12);
 const quantidade = v.pipe(v.number(), v.finite(), v.minValue(0), v.maxValue(1e9));
 const idProduto = v.pipe(v.string(), v.regex(/^[a-z][a-z0-9_]{0,40}$/));
 const idEmpresa = v.pipe(v.string(), v.regex(/^emp_\d{2,4}$/));
+const idFazenda = v.pipe(v.string(), v.regex(/^faz_\d{2,4}$/));
+/** Origem de um insumo (camada 3): fornecedor externo ou estoque próprio. */
+const origem = v.picklist(["fornecedor", "propria"]);
+const fator = v.pipe(v.number(), v.finite(), v.minValue(0), v.maxValue(1));
 const texto = (max: number) => v.pipe(v.string(), v.minLength(1), v.maxLength(max));
 
 /** Identificador de comando gerado no cliente (UUID ou similar): torna o comando idempotente. */
@@ -31,8 +35,22 @@ export const DecisaoDoAluno = v.variant("tipo", [
     producaoMensal: v.optional(quantidade),
     publicidadeMensal: v.optional(centavos),
     pdMensal: v.optional(centavos),
+    origemInsumos: v.optional(v.pipe(v.record(idProduto, origem), v.check((o) => Object.keys(o).length <= 12, "insumos demais"))),
+    origemCompraPronta: v.optional(origem),
   }),
   v.strictObject({ tipo: v.literal("construirFabrica"), produto: idProduto }),
+  v.strictObject({ tipo: v.literal("construirFazenda"), atividade: idProduto, producaoMensal: v.optional(quantidade) }),
+  v.strictObject({ tipo: v.literal("ajustarFazenda"), fazenda: idFazenda, producaoMensal: quantidade }),
+  v.strictObject({
+    tipo: v.literal("trocarAtividade"),
+    fazenda: idFazenda,
+    atividade: idProduto,
+    desova: v.picklist(["cooperativa", "atacado", "destruir"]),
+    fatorPrecoAtacado: v.optional(fator),
+  }),
+  v.strictObject({ tipo: v.literal("ofertarNoAtacado"), produto: idProduto, preco: centavos, quantidadeMensal: quantidade }),
+  v.strictObject({ tipo: v.literal("comprarNoAtacado"), produto: idProduto, vendedor: idEmpresa, quantidadeMensal: quantidade }),
+  v.strictObject({ tipo: v.literal("venderParaCooperativa"), produto: idProduto, quantidade }),
   v.strictObject({ tipo: v.literal("abrirPontoDeVenda"), quantidade: inteiro(1, 20) }),
   v.strictObject({ tipo: v.literal("fecharPontoDeVenda"), quantidade: inteiro(1, 20) }),
 ]);

@@ -38,6 +38,9 @@ export interface InfoSala {
   mercados: { id: string; nome: string }[];
   /** Produtos vendidos no varejo (nomes e unidades para as telas). */
   produtos: { id: string; nome: string; unidade: string }[];
+  /** Matérias-primas das fazendas e atividades (vazios sem o módulo `cadeia_produtiva`), para nomear avisos e painéis. */
+  materiasPrimas: { id: string; nome: string; unidade: string }[];
+  atividades: { id: string; nome: string }[];
   criterio: (typeof CRITERIOS_PONTUACAO)[number];
   duracaoMeses: number;
   rankingVisivel: (typeof VISIBILIDADES_RANKING)[number];
@@ -102,6 +105,10 @@ export interface EmpresaNoPainel {
   lucroUltimoMes: Centavos | null;
   pontosDeVenda: number;
   fabricas: number;
+  /** Fazendas da empresa (0 sem o módulo `cadeia_produtiva`). */
+  fazendas: number;
+  /** Estoque de matéria-prima, só as que têm saldo. */
+  materiasPrimas: { produto: string; quantidade: number; valor: Centavos }[];
   membros: { id: string; nome: string; conectado: boolean }[];
   pronto: boolean;
   pendentes: number;

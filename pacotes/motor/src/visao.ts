@@ -7,12 +7,15 @@
  * ou verbas dos concorrentes. Os robôs recebem só esta visão, com a mesma informação das equipes.
  */
 import { capacidadeDeProducao, multiplicadorMaoDeObra } from "./fabricacao";
+import { atividadeDaFazenda, capacidadeDeEstoque, emConversao, fazendaProduzindo, qualidadeDaFazenda } from "./fazendas";
+import { faixaDePrecoNoAtacado } from "./decisoes";
+import { precoDaCooperativa } from "./atacado";
 import { marca as calcularMarca } from "./formulas/marca";
 import { tetoDePreco } from "./formulas/nota";
 import { lucroAntesIR } from "./contabilidade";
-import { criarContexto } from "./contexto";
+import { type Contexto, criarContexto } from "./contexto";
 import type { Centavos } from "./dinheiro";
-import type { DecisaoProdutoVigente, EstadoPartida, FechamentoMensal } from "./tipos";
+import type { AtividadeResolvida, DecisaoProdutoVigente, EstadoPartida, FechamentoMensal, OfertaAtacado, PedidoAtacado } from "./tipos";
 import { capacidadeDeVenda } from "./vendas";
 
 export interface InsumoReceitaVisao {
@@ -77,6 +80,84 @@ export interface OfertaConcorrente {
   participacaoAnterior: number;
 }
 
+/** Fazenda da própria empresa (camada 3). */
+export interface FazendaPropria {
+  id: string;
+  atividade: string;
+  producaoMensal: number;
+  /** Meses de produção à capacidade nominal. */
+  experiencia: number;
+  /** Qualidade que a produção de hoje teria. */
+  qualidade: number;
+  operaDesdeTick: number;
+  /** Último tick sem produção da troca de atividade em curso; `null` = sem conversão. */
+  conversaoAteTick: number | null;
+  emObra: boolean;
+  emConversao: boolean;
+  /** Produz no próximo tick (obra pronta e sem conversão). */
+  produzindo: boolean;
+}
+
+/** Estoque de matéria-prima da própria empresa (camada 3). */
+export interface MateriaPrimaPropria {
+  produto: string;
+  nome: string;
+  unidade: string;
+  estoque: { quantidade: number; valor: Centavos; qualidade: number };
+  /** Capacidade do estoque (das fazendas em operação que a produzem); 0 sem fazenda. */
+  capacidade: number;
+  /** Dias seguidos com o estoque em 100% da capacidade. */
+  diasCheio: number;
+  /** Fração da capacidade (0 a 1) ao fim de cada um dos últimos dias, a mais recente por último. */
+  serie: number[];
+  ofertaAtacado: OfertaAtacado | null;
+  pedidoAtacado: PedidoAtacado | null;
+  /** Preço e qualidade do fornecedor externo (teto do atacado). */
+  precoFornecedor: Centavos;
+  qualidadeFornecedor: number;
+  /** O que a cooperativa paga por unidade (piso do atacado). */
+  precoCooperativa: Centavos;
+}
+
+/** Oferta de atacado de outra empresa do mercado: informação pública por desenho (seção 6.10). */
+export interface OfertaDeAtacado {
+  vendedor: string;
+  produto: string;
+  preco: Centavos;
+  quantidadeMensal: number;
+  /** Qualidade do estoque do vendedor (0 se está sem estoque). */
+  qualidade: number;
+}
+
+/** Parte da visão que só existe com o módulo `cadeia_produtiva` ligado. */
+export interface VisaoCadeia {
+  /** Regras das atividades das fazendas (públicas, como os custos dos pontos de venda). */
+  atividades: {
+    id: string;
+    nome: string;
+    tipo: AtividadeResolvida["tipo"];
+    produz: { produto: string; proporcao: number }[];
+    capex: Centavos;
+    prazoConstrucaoDias: number;
+    custoFixoMensal: Centavos;
+    custoVariavelPorUnidade: Centavos;
+    capacidadeUnidadesPorDia: number;
+    diasDeArmazenagem: number;
+    qualidadeBase: number;
+  }[];
+  experiencia: { ganhoQualidadePorMes: number; qualidadeMaxima: number };
+  conversao: { custo: Centavos; prazoDias: number };
+  cooperativa: { fatorPiso: number };
+  descarte: { custoPorUnidade: number };
+  completaComFornecedor: boolean;
+  fazendas: FazendaPropria[];
+  materiasPrimas: MateriaPrimaPropria[];
+  /** Ofertas de atacado das outras empresas do mesmo mercado (só as com quantidade positiva). */
+  atacado: OfertaDeAtacado[];
+  /** Faixa de preço permitida no atacado, por matéria-prima. */
+  faixaDoAtacado: Record<string, { piso: Centavos; teto: Centavos }>;
+}
+
 /** Visão após o último tick processado (`tick`, `mes` e `dia` são os desse tick; 0 = partida recém-criada). */
 export interface VisaoEmpresa {
   tick: number;
@@ -108,6 +189,76 @@ export interface VisaoEmpresa {
     jurosEmergencialMensal: number;
     /** Curva de aprendizado das fábricas (pública: é regra do jogo). */
     aprendizado: { limitesMeses: number[]; capacidade: number[]; maoDeObra: number[] };
+  };
+  /** `null` com o módulo `cadeia_produtiva` desligado. */
+  cadeia: VisaoCadeia | null;
+}
+
+function visaoDaCadeia(estado: EstadoPartida, empresaId: string, ctx: Contexto): VisaoCadeia | null {
+  const cadeia = estado.parametros.cadeia;
+  if (!cadeia || !estado.modulos.includes("cadeia_produtiva")) return null;
+  const empresa = estado.empresas.find((e) => e.id === empresaId)!;
+  const proximo = estado.tick + 1; // o tick que vem: é nele que as decisões e a produção valem
+  const faixaDoAtacado: VisaoCadeia["faixaDoAtacado"] = {};
+  for (const produto of Object.keys(empresa.materiasPrimas)) faixaDoAtacado[produto] = faixaDePrecoNoAtacado(estado, produto);
+  return {
+    atividades: cadeia.atividades.map((a) => ({
+      id: a.id,
+      nome: a.nome,
+      tipo: a.tipo,
+      produz: a.produz.map((x) => ({ produto: x.produto, proporcao: x.proporcao })),
+      capex: a.capex,
+      prazoConstrucaoDias: a.prazoConstrucaoDias,
+      custoFixoMensal: a.custoFixoMensal,
+      custoVariavelPorUnidade: a.custoVariavelPorUnidade,
+      capacidadeUnidadesPorDia: a.capacidadeUnidadesPorDia,
+      diasDeArmazenagem: a.diasDeArmazenagem,
+      qualidadeBase: a.qualidadeBase,
+    })),
+    experiencia: { ...cadeia.experiencia },
+    conversao: { ...cadeia.conversao },
+    cooperativa: { ...cadeia.cooperativa },
+    descarte: { ...cadeia.descarte },
+    completaComFornecedor: cadeia.completaComFornecedor,
+    fazendas: empresa.fazendas.map((f) => ({
+      id: f.id,
+      atividade: f.atividade,
+      producaoMensal: f.producaoMensal,
+      experiencia: f.experiencia,
+      qualidade: qualidadeDaFazenda(f, atividadeDaFazenda(f, ctx), ctx),
+      operaDesdeTick: f.operaDesdeTick,
+      conversaoAteTick: f.conversaoAteTick,
+      emObra: f.operaDesdeTick > proximo,
+      emConversao: emConversao(f, proximo),
+      produzindo: fazendaProduzindo(f, proximo),
+    })),
+    materiasPrimas: Object.entries(empresa.materiasPrimas).map(([id, m]) => {
+      const produto = ctx.produtos.get(id)!;
+      return {
+        produto: id,
+        nome: produto.nome,
+        unidade: produto.unidade,
+        estoque: { ...m.estoque },
+        capacidade: capacidadeDeEstoque(empresa, id, ctx),
+        diasCheio: m.diasCheio,
+        serie: [...m.serie],
+        ofertaAtacado: m.ofertaAtacado ? { ...m.ofertaAtacado } : null,
+        pedidoAtacado: m.pedidoAtacado ? { ...m.pedidoAtacado } : null,
+        precoFornecedor: produto.fornecedor!.preco,
+        qualidadeFornecedor: produto.fornecedor!.qualidade,
+        precoCooperativa: precoDaCooperativa(produto.fornecedor!.preco, cadeia.cooperativa.fatorPiso),
+      };
+    }),
+    atacado: estado.empresas
+      .filter((e) => e.id !== empresaId && e.mercado === empresa.mercado)
+      .flatMap((e) =>
+        Object.entries(e.materiasPrimas).flatMap(([id, m]) =>
+          m.ofertaAtacado && m.ofertaAtacado.quantidadeMensal > 0
+            ? [{ vendedor: e.id, produto: id, preco: m.ofertaAtacado.preco, quantidadeMensal: m.ofertaAtacado.quantidadeMensal, qualidade: m.estoque.quantidade > 0 ? m.estoque.qualidade : 0 }]
+            : [],
+        ),
+      ),
+    faixaDoAtacado,
   };
 }
 
@@ -187,7 +338,7 @@ export function visaoDaEmpresa(estado: EstadoPartida, empresaId: string): VisaoE
         const operando = empresa.fabricas.filter((f) => f.produto === o.produto && f.operaDesdeTick <= estado.tick).length;
         return {
           produto: o.produto,
-          decisao: { ...o.decisao },
+          decisao: { ...o.decisao, origemInsumos: { ...o.decisao.origemInsumos } },
           estoque: { ...o.estoque },
           reconhecimento: o.reconhecimento,
           fidelidade: o.fidelidade,
@@ -234,5 +385,6 @@ export function visaoDaEmpresa(estado: EstadoPartida, empresaId: string): VisaoE
         maoDeObra: [...p.aprendizado.maoDeObra],
       },
     },
+    cadeia: visaoDaCadeia(estado, empresaId, ctx),
   };
 }

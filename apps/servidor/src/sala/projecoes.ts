@@ -30,6 +30,16 @@ export function relogioDe(sala: Sala): EstadoRelogio {
   };
 }
 
+/** Matérias-primas que as fazendas da partida produzem (vazio sem o módulo `cadeia_produtiva`). */
+function materiasPrimasDaSala(sala: Sala): InfoSala["materiasPrimas"] {
+  if (!sala.estado.modulos.includes("cadeia_produtiva")) return [];
+  const ids = new Set(Object.keys(sala.estado.empresas[0]?.materiasPrimas ?? {}));
+  return sala.estado.parametros.produtos
+    .filter((p) => ids.has(p.id))
+    .map((p) => ({ id: p.id, nome: p.nome, unidade: p.unidade }))
+    .sort((a, b) => (a.id < b.id ? -1 : 1));
+}
+
 export function infoDe(sala: Sala): InfoSala {
   return {
     codigo: sala.codigo,
@@ -37,6 +47,8 @@ export function infoDe(sala: Sala): InfoSala {
     presetNome: sala.preset.nome,
     mercados: sala.estado.mercados.map((m) => ({ id: m.id, nome: m.nome })),
     produtos: sala.estado.parametros.produtos.filter((p) => p.varejo !== null).map((p) => ({ id: p.id, nome: p.nome, unidade: p.unidade })),
+    materiasPrimas: materiasPrimasDaSala(sala),
+    atividades: sala.estado.modulos.includes("cadeia_produtiva") ? (sala.estado.parametros.cadeia?.atividades ?? []).map((a) => ({ id: a.id, nome: a.nome })) : [],
     criterio: sala.config.criterio,
     duracaoMeses: sala.config.duracaoMeses,
     rankingVisivel: sala.config.rankingVisivel,
@@ -145,6 +157,10 @@ export function projetarProfessor(sala: Sala, linkTelao: string, pin: string | n
         lucroUltimoMes: e.contabil.ultimoFechamento?.lucroLiquido ?? null,
         pontosDeVenda: e.pontosDeVenda.length,
         fabricas: e.fabricas.length,
+        fazendas: e.fazendas.length,
+        materiasPrimas: Object.entries(e.materiasPrimas)
+          .filter(([, m]) => m.estoque.quantidade > 0)
+          .map(([produto, m]) => ({ produto, quantidade: m.estoque.quantidade, valor: m.estoque.valor })),
         membros: sala.membros.filter((m) => m.empresa === e.id).map((m) => ({ id: m.id, nome: m.nome, conectado: conectados.has(m.id) })),
         pronto: sala.prontos.has(e.id),
         pendentes: sala.fila.filter((f) => f.empresa === e.id).length,

@@ -628,6 +628,8 @@ function montarPartida(preset: Preset, semente: string, config: ConfigSala, vaga
     preset,
     semente,
     mercados: Array.from({ length: config.mercados }, (_, i) => ({ nome: `Mercado ${i + 1}` })),
+    // Um preset com o bloco da cadeia joga com o módulo `cadeia_produtiva` ligado.
+    ...(preset.cadeia ? { modulos: ["cadeia_produtiva" as const] } : {}),
     empresas: vagas.map((v, i) => ({
       nome: v.equipe?.nome ?? (v.robo ? nomeDoRobo(robos++) : `Vaga ${i + 1}`),
       mercado: v.mercado,

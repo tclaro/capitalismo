@@ -87,7 +87,7 @@ Fora desta fase: calendário agrícola, extração, fábricas de semiacabados, r
 | 4 | **Origem dos insumos**: fábrica e carne/frango a partir do estoque próprio, completando com o fornecedor. **Concluída em 02/10/2026** (origens `fornecedor` e `propria`; a origem `{equipe}` vem com o atacado, na entrega 5; ver a nota abaixo da tabela) | Custo e qualidade esperados em casos calculados à mão |
 | 5 | **Atacado e cooperativa** (passo 5; a cooperativa só compra por ordem da equipe). **Concluída em 02/10/2026** (ver a nota abaixo da tabela) | Conservação do dinheiro entre empresas por tick; resultado igual com a ordem das empresas trocada; rateio proporcional |
 | 6 | **Troca de atividade e desova**. **Concluída em 02/10/2026** (ver a nota abaixo da tabela) | Três vias de desova; estoque e caixa conferem; conversão sem produção |
-| 7 | **Visão, protocolo, servidor e persistência** | Teste de vazamento (campos permitidos), validação do corpo, retomada de partida v1 |
+| 7 | **Visão, protocolo, servidor e persistência**. **Concluída em 02/10/2026** (ver a nota abaixo da tabela) | Teste de vazamento (campos permitidos), validação do corpo, retomada de partida v1 |
 | 8 | **Tela da cadeia** | Testes de DOM (happy-dom); sem rolagem e sem tremor nos dois tamanhos |
 | 9 | **Calibração e balanceamento** do preset | Cada caminho (só fazenda, só fábrica, integrada) dá resultado plausível; cooperativa nunca é a melhor saída; relatório em `docs/balanceamento` |
 | 10 | **Fechamento**: documentos, guia, guia de TI, carga e E2E (antiga entrega 8) | `bun run verificar` limpo; roteiro do piloto |
@@ -123,6 +123,14 @@ Fora desta fase: calendário agrícola, extração, fábricas de semiacabados, r
 - **Estoque órfão** é o das matérias-primas da atividade antiga que nem a atividade nova nem outra fazenda da empresa (em qualquer estado) produz. É só ele que sai; o resto fica. Isso permite trocar uma de duas fazendas iguais sem perder o estoque.
 - Vias: `destruir` (imediata: baixa o estoque como `perda_de_estoque`, mais o descarte em caixa, também na perda); `cooperativa` (ordem de venda de todo o órfão, ao piso, no passo 5); `atacado` (lote único aos pedidos vigentes a `fatorPrecoAtacado` × preço do fornecedor, com o fator entre o piso e 1; cada pedido leva até a sua **quantidade mensal**, na proporção quando o lote não basta). **O que o lote não vender fica no estoque**, para vender depois pela oferta normal ou pela cooperativa; é o desvio em relação a "sai na mesma hora", porque não há comprador garantido.
 - O lote sai antes da oferta do dia, e a oferta do dia vê o estoque já descontado, dividido na proporção entre os compradores.
+
+**Nota da entrega 7:**
+- **Visão (`motor/visao.ts`):** `VisaoEmpresa.cadeia` (`null` com o módulo desligado, então os robôs e o resto não mudam). Traz as regras das atividades, da conversão, da cooperativa e do descarte (públicas), as fazendas e os estoques de matéria-prima **da própria empresa** (capacidade, `diasCheio`, `serie`, oferta e pedido de atacado, preço do fornecedor e da cooperativa), a faixa de preço do atacado e as **ofertas de atacado dos outros** do mesmo mercado (vendedor, produto, preço, quantidade mensal e qualidade do estoque). Nada de caixa, estoque, fazendas, pedidos ou decisões dos concorrentes. A decisão de cada oferta passou a ser copiada em profundidade (`origemInsumos`).
+- **Protocolo (`compartilhado`):** seis decisões novas e `origemInsumos` e `origemCompraPronta` na de produto, todas em objeto estrito sem `empresa`. **`VERSAO_PROTOCOLO` continua 1**: só entram mensagens e campos novos, e nenhum cliente antigo quebra.
+- **Servidor:** a sala liga o módulo `cadeia_produtiva` sozinha quando o preset tem o bloco da cadeia. `InfoSala` ganhou `materiasPrimas` e `atividades` (só nomes, públicos); o painel do professor ganhou o número de fazendas e o estoque de matéria-prima por empresa. **O telão não ganhou nada**, de propósito (o teste confere que nenhuma chave da cadeia aparece nele). Os avisos novos só chegam à equipe citada.
+- **Persistência:** o estado gravado já é migrado ao carregar; os testes cobrem a retomada idêntica de uma sala da cadeia e a de uma sala gravada na versão 3.
+- **O preset `cadeia/minima` continua fora da lista de criação de salas** até a tela (entrega 8), porque sem ela o aluno não vê nem comanda as fazendas. Por API, a sala já funciona.
+- Na web, só os textos dos avisos novos (agora com os nomes).
 
 A entrega 7 do plano da fase 1 (telão e acessibilidade) continua antes desta fase, se o autor mantiver a ordem.
 

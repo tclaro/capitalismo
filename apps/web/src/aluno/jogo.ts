@@ -213,7 +213,8 @@ export function avisoDoPrimeiroLugar(antes: number | null, depois: number | null
 }
 
 export function textoDoAviso(a: AvisoDoMotor, v: VisaoAluno): string {
-  const produto = (id: string) => v.visao.produtos.find((p) => p.id === id)?.nome ?? id;
+  const produto = (id: string) => v.visao.produtos.find((p) => p.id === id)?.nome ?? v.sala.materiasPrimas.find((m) => m.id === id)?.nome ?? id;
+  const atividade = (id: string) => (v.sala.atividades.find((x) => x.id === id)?.nome ?? id).toLowerCase();
   switch (a.tipo) {
     case "evento":
       return a.descricao;
@@ -223,13 +224,12 @@ export function textoDoAviso(a: AvisoDoMotor, v: VisaoAluno): string {
       return `${a.quantidade} ponto(s) de venda começaram a funcionar.`;
     case "fabrica_concluida":
       return `A fábrica de ${produto(a.produto).toLowerCase()} ficou pronta: já dá para produzir.`;
-    // A tela da cadeia (entrega 8 da fase 1b) traz os nomes das atividades e matérias-primas; até lá, o id legível.
     case "fazenda_concluida":
-      return `A fazenda de ${a.atividade.replaceAll("_", " ")} ficou pronta: já dá para produzir.`;
+      return `A fazenda de ${atividade(a.atividade)} ficou pronta: já dá para produzir.`;
     case "conversao_concluida":
-      return `A fazenda virou ${a.atividade.replaceAll("_", " ")}: já dá para produzir.`;
+      return `A fazenda virou ${atividade(a.atividade)}: já dá para produzir.`;
     case "estoque_cheio":
-      return `O estoque de ${produto(a.produto).replaceAll("_", " ")} está cheio há dias: a produção da fazenda vai parar.`;
+      return `O estoque de ${produto(a.produto).toLowerCase()} está cheio há dias: a produção da fazenda vai parar.`;
     case "ruptura_de_estoque":
       return `${produto(a.produto)} esgotou: faltou produto para vender.`;
     case "caixa_negativo":

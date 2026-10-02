@@ -34,7 +34,13 @@ export { precoDaCooperativa } from "./atacado";
 export { capacidadeDeEstoque, qualidadeDaFazenda, ratear } from "./fazendas";
 export { type CalculoIR, calcularIR, quotaDeDepreciacao } from "./financeiro";
 export { calcularPontuacao, type CriterioPontuacao, type PosicaoRanking, ranking } from "./pontuacao";
-export { visaoDaEmpresa, type InsumoReceitaVisao, type OfertaConcorrente, type OfertaPropria, type ProdutoVisivel, type VisaoEmpresa } from "./visao";
+export {
+  type FazendaPropria,
+  type MateriaPrimaPropria,
+  type OfertaDeAtacado,
+  type VisaoCadeia,
+  visaoDaEmpresa,
+  type InsumoReceitaVisao, type OfertaConcorrente, type OfertaPropria, type ProdutoVisivel, type VisaoEmpresa } from "./visao";
 export {
   decidirRobo,
   diaDeDecisaoDosRobos,
