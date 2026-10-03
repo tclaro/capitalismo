@@ -1,0 +1,10 @@
+{
+  "name": "@simulador/teste-de-carga",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Clientes simulados para o teste de carga: uma turma inteira (ex.: 60 alunos) numa sala real do servidor.",
+  "dependencies": {
+    "@simulador/compartilhado": "workspace:*"
+  }
+}

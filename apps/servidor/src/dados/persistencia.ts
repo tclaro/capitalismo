@@ -32,8 +32,8 @@ export class ObservadorPersistente implements Observador {
     this.repositorio.gravarComando(sala, idComando, resposta);
   }
 
-  aoMudar(sala: Sala, motivo: Parameters<NonNullable<Observador["aoMudar"]>>[1]): void {
-    this.repassar.aoMudar?.(sala, motivo);
+  aoMudar(sala: Sala, motivo: Parameters<NonNullable<Observador["aoMudar"]>>[1], empresa?: string): void {
+    this.repassar.aoMudar?.(sala, motivo, empresa);
   }
 
   aoErro(sala: Sala, erro: unknown): void {

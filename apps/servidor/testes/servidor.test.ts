@@ -206,6 +206,55 @@ describe("fluxo da sala", () => {
   });
 });
 
+describe("atualizações às telas", () => {
+  test("uma decisão aceita atualiza só a equipe de quem decidiu e o professor (não as outras equipes nem o telão)", async () => {
+    const s = await salaComEquipes(amb);
+    const wsAna = await s.ana.nav.ws({ codigo: s.codigo, papel: "aluno" });
+    const wsBia = await s.bia.nav.ws({ codigo: s.codigo, papel: "aluno" });
+    const wsCaio = await s.caio.nav.ws({ codigo: s.codigo, papel: "aluno" });
+    const wsProf = await s.prof.ws({ codigo: s.codigo, papel: "professor" });
+    const wsTelao = await amb.navegador().ws({ codigo: s.codigo, papel: "telao", t: s.tokenTelao });
+    for (const w of [wsAna, wsBia, wsCaio, wsProf, wsTelao]) await w.esperar((m) => m.tipo === "snapshot");
+    // Deixa assentar as atualizações de presença (cada conexão nova avisa o professor) antes de contar.
+    await new Promise((ok) => setTimeout(ok, 300));
+    for (const w of [wsAna, wsBia, wsCaio, wsProf, wsTelao]) w.descartar();
+    const antes = [wsAna, wsBia, wsCaio, wsProf, wsTelao].map((w) => w.mensagens.length);
+
+    const c = cmd();
+    wsAna.enviar({ tipo: "decidir", idComando: c, decisoes: [{ tipo: "produto", produto: LEITE, preco: 580, compraMensal: 1000 }] });
+    expect((await wsAna.resposta(c)).ok).toBe(true);
+    // Os dois alunos da equipe e o professor recebem a pendência.
+    for (const w of [wsAna, wsBia]) await w.esperar<Atualizacao<VisaoAluno>>((m) => ehVisao(m) && (m as Atualizacao<VisaoAluno>).visao.pendentes.length === 1);
+    await wsProf.esperar<Atualizacao<VisaoProfessor>>((m) => ehVisao(m) && (m as Atualizacao<VisaoProfessor>).visao.empresas[0]!.pendentes === 1);
+    await new Promise((ok) => setTimeout(ok, 150));
+    // A outra equipe e o telão não receberam nada.
+    expect(wsCaio.mensagens.length).toBe(antes[2]!);
+    expect(wsTelao.mensagens.length).toBe(antes[4]!);
+
+    // Um tick atualiza todos.
+    const iniciar = cmd();
+    wsProf.enviar({ tipo: "relogio", idComando: iniciar, tickEsperado: 0, acao: "iniciar" });
+    expect((await wsProf.resposta(iniciar)).ok).toBe(true);
+    amb.relogio.avancar(1_000);
+    for (const w of [wsAna, wsBia, wsCaio, wsTelao, wsProf]) await w.esperar((m) => ehVisao(m) && (m as Atualizacao<VisaoAluno>).visao.relogio?.tick === 1);
+  });
+
+  test("decisões de equipes diferentes no mesmo instante: cada uma vê só a própria pendência", async () => {
+    const s = await salaComEquipes(amb);
+    const wsAna = await s.ana.nav.ws({ codigo: s.codigo, papel: "aluno" });
+    const wsCaio = await s.caio.nav.ws({ codigo: s.codigo, papel: "aluno" });
+    for (const w of [wsAna, wsCaio]) await w.esperar((m) => m.tipo === "snapshot");
+    const [ca, cc] = [cmd(), cmd()];
+    wsAna.enviar({ tipo: "decidir", idComando: ca, decisoes: [{ tipo: "produto", produto: LEITE, preco: 580 }] });
+    wsCaio.enviar({ tipo: "decidir", idComando: cc, decisoes: [{ tipo: "produto", produto: LEITE, preco: 640 }] });
+    expect((await wsAna.resposta(ca)).ok && (await wsCaio.resposta(cc)).ok).toBe(true);
+    const daAna = await wsAna.esperar<Atualizacao<VisaoAluno>>((m) => ehVisao(m) && (m as Atualizacao<VisaoAluno>).visao.pendentes.length === 1);
+    const doCaio = await wsCaio.esperar<Atualizacao<VisaoAluno>>((m) => ehVisao(m) && (m as Atualizacao<VisaoAluno>).visao.pendentes.length === 1);
+    expect(daAna.visao.pendentes[0]).toMatchObject({ preco: 580 });
+    expect(doCaio.visao.pendentes[0]).toMatchObject({ preco: 640 });
+  });
+});
+
 describe("permissões (seção 9.6)", () => {
   test("matriz de conexão: quem pode abrir cada papel", async () => {
     const s = await salaComEquipes(amb);

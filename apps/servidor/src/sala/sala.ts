@@ -86,7 +86,7 @@ export interface Observador {
   gravarDecisao?(sala: Sala, item: DecisaoNaFila): void;
   gravarSala?(sala: Sala): void;
   /** Algo visível mudou (tick, status, equipes, fila): as telas devem ser atualizadas. */
-  aoMudar?(sala: Sala, motivo: "tick" | "status" | "equipes" | "fila" | "config"): void;
+  aoMudar?(sala: Sala, motivo: "tick" | "status" | "equipes" | "fila" | "config", empresa?: string): void;
   /** Um tick falhou (motor ou gravação): a sala foi pausada com motivo "erro". */
   aoErro?(sala: Sala, erro: unknown): void;
 }
@@ -367,7 +367,8 @@ export class Sala {
         this.fila.push(item);
         this.observador.gravarDecisao?.(this, item);
       }
-      this.observador.aoMudar?.(this, "fila");
+      // Só a equipe de quem decidiu (e o professor) vê a pendência: as outras telas não mudam.
+      this.observador.aoMudar?.(this, "fila", membro.empresa);
       return { ok: true };
     });
   }

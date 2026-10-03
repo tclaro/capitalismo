@@ -52,6 +52,13 @@
         "sharp": "^0.34.4",
       },
     },
+    "ferramentas/teste-de-carga": {
+      "name": "@simulador/teste-de-carga",
+      "version": "0.0.0",
+      "dependencies": {
+        "@simulador/compartilhado": "workspace:*",
+      },
+    },
     "pacotes/catalogo": {
       "name": "@simulador/catalogo",
       "version": "0.0.0",
@@ -177,6 +184,8 @@
     "@simulador/motor": ["@simulador/motor@workspace:pacotes/motor"],
 
     "@simulador/servidor": ["@simulador/servidor@workspace:apps/servidor"],
+
+    "@simulador/teste-de-carga": ["@simulador/teste-de-carga@workspace:ferramentas/teste-de-carga"],
 
     "@simulador/web": ["@simulador/web@workspace:apps/web"],
 

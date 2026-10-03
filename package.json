@@ -11,9 +11,11 @@
   ],
   "scripts": {
     "test": "bun test pacotes ferramentas apps",
-    "typecheck": "tsc --noEmit -p pacotes/motor && tsc --noEmit -p pacotes/motor/testes && tsc --noEmit -p pacotes/catalogo && tsc --noEmit -p pacotes/catalogo/testes && tsc --noEmit -p pacotes/compartilhado && tsc --noEmit -p pacotes/compartilhado/testes && tsc --noEmit -p ferramentas/balanceamento && tsc --noEmit -p ferramentas/imagens && tsc --noEmit -p apps/servidor && tsc --noEmit -p apps/web && tsc --noEmit -p apps/web/testes",
+    "typecheck": "tsc --noEmit -p pacotes/motor && tsc --noEmit -p pacotes/motor/testes && tsc --noEmit -p pacotes/catalogo && tsc --noEmit -p pacotes/catalogo/testes && tsc --noEmit -p pacotes/compartilhado && tsc --noEmit -p pacotes/compartilhado/testes && tsc --noEmit -p ferramentas/balanceamento && tsc --noEmit -p ferramentas/teste-de-carga && tsc --noEmit -p ferramentas/e2e && tsc --noEmit -p ferramentas/imagens && tsc --noEmit -p apps/servidor && tsc --noEmit -p apps/web && tsc --noEmit -p apps/web/testes",
     "verificar": "bun run typecheck && bun run test",
     "balancear": "bun ferramentas/balanceamento/src/cli.ts",
+    "carga": "bun ferramentas/teste-de-carga/src/cli.ts",
+    "e2e": "bun ferramentas/e2e/src/e2e.ts",
     "imagens": "bun ferramentas/imagens/src/preparar.ts",
     "servidor": "bun apps/servidor/src/main.ts",
     "web": "bun run --cwd apps/web dev",

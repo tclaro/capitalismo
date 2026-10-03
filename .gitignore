@@ -4,6 +4,9 @@ dist/
 relatorios-poc-rede/
 # saídas da CLI de balanceamento (relatórios aprovados vão para docs/balanceamento/)
 ferramentas/balanceamento/saida/
+# relatórios do teste de carga e do E2E (a versão de referência fica em docs/)
+ferramentas/teste-de-carga/saida/
+ferramentas/e2e/saida/
 # build do empacotamento (manifesto gerado)
 apps/servidor/build/
 apps/servidor/.bun-cache/

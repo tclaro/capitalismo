@@ -76,8 +76,10 @@ export async function testarExecutavel(comando: readonly string[]): Promise<void
       conferir(rota.status === 200 && (await rota.text()).includes('id="raiz"'), "rota da interface não caiu no index.html");
       conferir((await fetch(`${base}/assets/nao-existe.js`)).status === 404, "asset inexistente não deu 404");
 
-      const info = (await (await fetch(`${base}/api/servidor`)).json()) as { chaveDefinida: boolean; protocolo: number };
+      const info = (await (await fetch(`${base}/api/servidor`)).json()) as { chaveDefinida: boolean; protocolo: number; presets: { id: string }[] };
       conferir(info.chaveDefinida && info.protocolo === 1, "/api/servidor inesperado");
+      conferir(info.presets.some((x) => x.id === "cadeia/minima"), "o cenário da cadeia mínima não é oferecido na criação de salas");
+      conferir(css.includes("j-palco-cadeia"), "o CSS embutido não traz a tela da cadeia");
       const criada = await fetch(`${base}/api/salas`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chave: CHAVE, config: CONFIG }) });
       conferir(criada.status === 201, `criar sala: ${criada.status} ${await criada.clone().text()}`);
       const { codigo } = (await criada.json()) as { codigo: string };
@@ -94,6 +96,25 @@ export async function testarExecutavel(comando: readonly string[]): Promise<void
         ws.onerror = () => rejeitar(new Error("fumaça: WebSocket recusado"));
       });
       conferir(JSON.parse(snapshot).tipo === "snapshot", "primeira mensagem não é snapshot");
+
+      // Sala da cadeia mínima: o módulo liga sozinho e o professor recebe as atividades e as matérias-primas.
+      const cadeia = await fetch(`${base}/api/salas`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chave: CHAVE, config: { ...CONFIG, presetId: "cadeia/minima" } }) });
+      conferir(cadeia.status === 201, `criar sala da cadeia: ${cadeia.status} ${await cadeia.clone().text()}`);
+      const salaDaCadeia = (await cadeia.json()) as { codigo: string };
+      const cookieDaCadeia = cadeia.headers.getSetCookie()[0]!.split(";")[0]!;
+      const visaoDaCadeia = JSON.parse(
+        await new Promise<string>((resolver, rejeitar) => {
+          const ws = new WebSocket(`ws://127.0.0.1:${porta}/ws?codigo=${salaDaCadeia.codigo}&papel=professor`, { headers: { cookie: cookieDaCadeia } } as unknown as string[]);
+          const t = setTimeout(() => rejeitar(new Error("fumaça: WebSocket da cadeia sem snapshot")), 5000);
+          ws.onmessage = (e) => {
+            clearTimeout(t);
+            ws.close();
+            resolver(String(e.data));
+          };
+          ws.onerror = () => rejeitar(new Error("fumaça: WebSocket da cadeia recusado"));
+        }),
+      ) as { visao: { sala: { atividades: unknown[]; materiasPrimas: unknown[] } } };
+      conferir(visaoDaCadeia.visao.sala.atividades.length === 5 && visaoDaCadeia.visao.sala.materiasPrimas.length === 6, "a sala da cadeia não traz as 5 atividades e as 6 matérias-primas");
       conferir(!/\[erro\]/.test(texto()), `erro no log do servidor:\n${texto()}`);
     } finally {
       proc.kill();

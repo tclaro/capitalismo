@@ -29,7 +29,7 @@ export function codigoAleatorio(): string {
   return codigo;
 }
 
-export type Ouvinte = (sala: Sala, motivo: Parameters<NonNullable<Observador["aoMudar"]>>[1]) => void;
+export type Ouvinte = (sala: Sala, motivo: Parameters<NonNullable<Observador["aoMudar"]>>[1], empresa?: string) => void;
 
 export interface OpcoesGerente {
   db: Database;
@@ -70,7 +70,7 @@ export class Gerente {
 
   private observador(): Observador {
     return new ObservadorPersistente(this.repositorio, {
-      aoMudar: (sala, motivo) => this.ouvinte?.(sala, motivo),
+      aoMudar: (sala, motivo, empresa) => this.ouvinte?.(sala, motivo, empresa),
       aoErro: (sala, erro) => this.log("erro", `sala ${sala.codigo}: falha no tick ${sala.estado.tick + 1}; partida pausada`, erro),
     });
   }

@@ -1,0 +1,8 @@
+{
+  "name": "@simulador/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Conferência ponta a ponta: servidor real, Edge sem janela e a tela do aluno jogando uma sala de verdade.",
+  "dependencies": {}
+}

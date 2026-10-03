@@ -43,6 +43,7 @@ import { PRESETS } from "@simulador/catalogo";
 import { ESTRATEGIAS_RAZOAVEIS } from "@simulador/motor";
 import { DURACAO_SESSAO_MS, type PapelComSessao, type RegraDeLimite } from "./dados/acessos";
 import type { Gerente } from "./gerente";
+import { PedidosDeEnvio } from "./envios";
 import { apagarCookie, cookieDeSessao, ErroHttp, ehPedidoLocal, erro, ipDoCliente, json, lerCookies, lerJson, origemPermitida } from "./http/util";
 import { listarIPv4 } from "./rede";
 import { infoDe, projetarEquipe, projetarProfessor, projetarTelao, relogioDe, vagasPublicas } from "./sala/projecoes";
@@ -170,29 +171,33 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
     enviar(ws, { tipo: "snapshot", papel: d.papel, visao: visaoDe(sala, { ...d, papel: d.papel }) });
   }
 
-  function publicar(sala: Sala): void {
+  /**
+   * Publica as visões às telas. `so`: só estas equipes (e o professor), sem o telão nem as outras equipes;
+   * usado quando a mudança só aparece para elas (uma decisão que entrou na fila).
+   */
+  function publicar(sala: Sala, so?: ReadonlySet<string>): void {
     for (const v of sala.vagas) {
+      if (so && !so.has(v.empresa)) continue;
       const t = topico.equipe(sala.id, v.empresa);
       if (server.subscriberCount(t) > 0) server.publish(t, JSON.stringify({ tipo: "atualizacao", papel: "aluno", visao: projetarEquipe(sala, v.empresa) } satisfies MensagemServidor));
     }
     const t = topico.telao(sala.id);
-    if (server.subscriberCount(t) > 0) server.publish(t, JSON.stringify({ tipo: "atualizacao", papel: "telao", visao: projetarTelao(sala) } satisfies MensagemServidor));
+    if (!so && server.subscriberCount(t) > 0) server.publish(t, JSON.stringify({ tipo: "atualizacao", papel: "telao", visao: projetarTelao(sala) } satisfies MensagemServidor));
     const p = topico.professor(sala.id);
     if (server.subscriberCount(p) > 0) {
       server.publish(p, JSON.stringify({ tipo: "atualizacao", papel: "professor", visao: projetarProfessor(sala, linkTelao(sala), null, conectados(sala)) } satisfies MensagemServidor));
     }
   }
 
-  const agendadas = new Set<string>();
-  function agendarEnvio(salaId: string): void {
-    if (agendadas.has(salaId)) return;
-    agendadas.add(salaId);
+  const pedidos = new PedidosDeEnvio();
+  function agendarEnvio(salaId: string, soEquipe?: string): void {
+    if (!pedidos.pedir(salaId, soEquipe)) return;
     queueMicrotask(() => {
-      agendadas.delete(salaId);
+      const so = pedidos.retirar(salaId);
       const sala = gerente.sala(salaId);
       if (!sala) return;
       try {
-        publicar(sala);
+        publicar(sala, so);
       } catch (e) {
         gerente.log("erro", `sala ${sala.codigo}: falha ao enviar às telas`, e);
       }
@@ -216,9 +221,9 @@ export function iniciarServidor(opcoes: OpcoesServidor): ServidorDoSimulador {
     }
   }
 
-  gerente.ouvinte = (sala, motivo) => {
+  gerente.ouvinte = (sala, motivo, empresa) => {
     if (motivo === "equipes") realocarAlunos(sala);
-    agendarEnvio(sala.id);
+    agendarEnvio(sala.id, motivo === "fila" ? empresa : undefined);
   };
   gerente.aoExcluir = (sala) => {
     for (const ws of conexoes.get(sala.id) ?? []) ws.close(4004, "sala excluída");
