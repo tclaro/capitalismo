@@ -9,9 +9,19 @@ import { type Gerador, uniforme } from "../aleatorio";
 import type { Contexto } from "../contexto";
 import type { Decisao, EstadoPartida } from "../tipos";
 import { visaoDaEmpresa } from "../visao";
-import { ESTRATEGIAS, type Intensidade } from "./estrategias";
+import { CADEIA_COOPERATIVA, CADEIA_INTEGRADA, CADEIA_SO_FAZENDA } from "./cadeia";
+import { ESTRATEGIAS as ESTRATEGIAS_DA_CAMADA_1, type Estrategia, type Intensidade } from "./estrategias";
 
-export { ESTRATEGIAS, ESTRATEGIAS_DO_CONFRONTO, ESTRATEGIAS_RAZOAVEIS, type Estrategia, type Intensidade } from "./estrategias";
+export { ESTRATEGIAS_DO_CONFRONTO, ESTRATEGIAS_RAZOAVEIS, type Estrategia, type Intensidade } from "./estrategias";
+
+/** Estratégias da cadeia produtiva (só para o balanceamento da fase 1b). */
+export const ESTRATEGIAS_DA_CADEIA: readonly string[] = [CADEIA_INTEGRADA.id, CADEIA_SO_FAZENDA.id, CADEIA_COOPERATIVA.id];
+
+/** Registro das estratégias, por id: as da camada 1 e as de teste da cadeia. */
+export const ESTRATEGIAS: Readonly<Record<string, Estrategia>> = {
+  ...ESTRATEGIAS_DA_CAMADA_1,
+  ...Object.fromEntries([CADEIA_INTEGRADA, CADEIA_SO_FAZENDA, CADEIA_COOPERATIVA].map((e) => [e.id, e])),
+};
 
 export const DIAS_DE_DECISAO_NA_SEMANA = 7;
 

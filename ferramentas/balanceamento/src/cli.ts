@@ -18,7 +18,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { PRESETS, VERSAO_CATALOGO } from "@simulador/catalogo";
 import { VERSAO_MOTOR } from "@simulador/motor";
-import { CONFRONTOS_DE_APROVACAO, TIPOS_CONFRONTO, type TipoConfronto } from "./confronto";
+import { CONFRONTOS_DE_APROVACAO, TIPOS_CONFRONTO, TODOS_OS_TIPOS_DE_CONFRONTO, type TipoConfronto } from "./confronto";
+import { criteriosDaCadeia, economiaDasAtividades, indicadoresDaCadeia, tabelaDeEconomia } from "./cadeia";
 import { calcularMetricas } from "./metricas";
 import { buscarMelhorResposta, relatorioMelhorResposta } from "./melhorResposta";
 import { executarEmParalelo } from "./paralelo";
@@ -58,8 +59,10 @@ export function lerArgumentos(argv: readonly string[], nucleos: number): OpcoesC
   const preset = valor("preset") ?? "introdutorio/padrao";
   if (!PRESETS[preset]) throw new Error(`preset desconhecido: "${preset}" (disponíveis: ${Object.keys(PRESETS).join(", ")})`);
   const tipo = valor("confronto") ?? "completo";
-  const confrontos = tipo === "completo" ? [...TIPOS_CONFRONTO] : [tipo as TipoConfronto];
-  if (!confrontos.every((c) => TIPOS_CONFRONTO.includes(c))) throw new Error(`confronto desconhecido: "${tipo}" (use ${[...TIPOS_CONFRONTO, "completo"].join(", ")})`);
+  // O "completo" são os confrontos da camada 1, mais o da cadeia nos presets que trazem o bloco da cadeia.
+  const confrontos = tipo === "completo" ? [...TIPOS_CONFRONTO, ...(PRESETS[preset]!.cadeia ? (["cadeia"] as const) : [])] : [tipo as TipoConfronto];
+  if (!confrontos.every((c) => TODOS_OS_TIPOS_DE_CONFRONTO.includes(c))) throw new Error(`confronto desconhecido: "${tipo}" (use ${[...TODOS_OS_TIPOS_DE_CONFRONTO, "completo"].join(", ")})`);
+  if (confrontos.includes("cadeia") && !PRESETS[preset]!.cadeia) throw new Error(`o confronto "cadeia" exige um preset com o bloco da cadeia (${preset} não tem)`);
   const estrategia = valor("estrategia");
   if (comando === "melhor-resposta" && !estrategia) throw new Error("melhor-resposta precisa de --estrategia <id>");
   return {
@@ -105,6 +108,13 @@ async function principal(): Promise<number> {
     const resultados = await executarEmParalelo({ presetId: o.preset, confronto, prefixo: o.prefixo, meses: o.meses }, o.sementes, o.trabalhadores);
     const duracaoSegundos = (performance.now() - inicio) / 1000;
     const metricas = calcularMetricas(resultados, confronto === "extremo" ? { estrategiaExtrema: "preco_minimo" } : {});
+    if (confronto === "cadeia") {
+      // No confronto da cadeia a aprovação é relativa (cada caminho contra a estratégia sem fazendas);
+      // os critérios gerais da seção 10.4 aparecem como diagnóstico (o premium da camada 1 domina).
+      for (const c of metricas.criterios) c.diagnostico = true;
+      metricas.criterios.unshift(...criteriosDaCadeia(indicadoresDaCadeia(metricas)));
+      metricas.aprovado = metricas.criterios.every((c) => c.passou || c.diagnostico === true);
+    }
     const info = {
       presetId: o.preset,
       presetVersao: preset.versao,
@@ -120,7 +130,7 @@ async function principal(): Promise<number> {
       diagnostico: !CONFRONTOS_DE_APROVACAO.includes(confronto),
     };
     const base = join(o.saida, confronto);
-    writeFileSync(`${base}.md`, relatorioMarkdown(info, metricas));
+    writeFileSync(`${base}.md`, relatorioMarkdown(info, metricas, confronto === "cadeia" ? { economiaDasAtividades: tabelaDeEconomia(economiaDasAtividades(preset)) } : {}));
     writeFileSync(`${base}.csv`, relatorioCsv(resultados));
     if (!info.diagnostico) aprovado &&= metricas.aprovado;
     const situacao = info.diagnostico ? "diagnóstico" : metricas.aprovado ? "APROVADO " : "REPROVADO";

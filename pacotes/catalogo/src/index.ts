@@ -9,7 +9,7 @@ import { PRESET_INTRODUTORIO } from "./presets/introdutorio";
 import { PRESET_TESTE } from "./presets/teste";
 
 /** Versão do catálogo; muda quando a estrutura ou os números de um preset mudam. */
-export const VERSAO_CATALOGO = "0.3.0";
+export const VERSAO_CATALOGO = "0.4.0";
 
 export { ARVORE, produtoDaArvore, type OrigemMateriaPrima, type ProdutoDaArvore } from "./arvore";
 export { KG_POR_LB, LITROS_POR_QUART, paraMetrico, RECEITAS_MANUAL, receitaManual } from "./receitas";

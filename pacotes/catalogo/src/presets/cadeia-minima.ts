@@ -6,10 +6,13 @@
  * e acrescenta a jaqueta de couro, a carne bovina e o frango congelados, e o bloco `cadeia` com as
  * atividades das fazendas.
  *
- * **Valores provisórios.** Os números novos (fazendas, jaqueta, carne, frango, caixa inicial) são
- * hipóteses de ordem de grandeza, sem calibração: a calibração e o balanceamento deste preset vêm depois
- * (plano da fase 1b, entrega 9). As exceções são a proporção da receita da jaqueta e os pesos do índice
- * de sucesso dela (35% qualidade, 35% marca, 30% preço), informados pelo autor a partir do manual.
+ * **Calibração (v0.2.0, fase 1b, entrega 9).** Os números das fazendas (custo variável a ~82% do valor
+ * ao preço do fornecedor, capex e custo fixo para pagar em ~25 meses só pelo custo, ganho de qualidade de
+ * 0,3 ponto por mês de experiência) saíram da varredura documentada em
+ * `docs/balanceamento/cadeia-minima/LEIAME.md`. Continuam **provisórios**: a jaqueta (unidade e pesos
+ * internos pendentes do manual), a carne e o frango no varejo, o caixa inicial e a conversão de atividade
+ * não foram calibrados. A proporção da receita da jaqueta e os pesos do índice de sucesso dela (35%
+ * qualidade, 35% marca, 30% preço) vêm do autor, a partir do manual.
  */
 import type { Preset, ProdutoDoPreset } from "@simulador/motor";
 import { PRESET_INTRODUTORIO } from "./introdutorio";
@@ -80,7 +83,7 @@ export const PRESET_CADEIA_MINIMA: Preset = {
   ...PRESET_INTRODUTORIO,
   id: "cadeia/minima",
   nome: "Cadeia mínima — fazendas, fábricas e lojas",
-  versao: "0.1.0",
+  versao: "0.2.0",
   produtos: [
     ...PRESET_INTRODUTORIO.produtos,
     jaqueta,
@@ -100,11 +103,11 @@ export const PRESET_CADEIA_MINIMA: Preset = {
           { produto: "carne_bovina_congelada", proporcao: 1 },
           { produto: "couro", proporcao: 0.5 },
         ],
-        custoVariavelPorUnidade: faixa(reais(4), VARIACAO_CUSTOS),
+        custoVariavelPorUnidade: faixa(reais(23.63), VARIACAO_CUSTOS),
         qualidadeBase: faixa(50, 0.1),
-        capex: reais(350_000),
+        capex: reais(440_000),
         prazoConstrucaoDias: 30,
-        custoFixoMensal: reais(9_000),
+        custoFixoMensal: reais(6_500),
         capacidadeUnidadesPorDia: 150,
         diasDeArmazenagem: 10,
         vidaUtilMeses: 120,
@@ -114,11 +117,11 @@ export const PRESET_CADEIA_MINIMA: Preset = {
         nome: "Gado leiteiro",
         tipo: "pecuaria",
         produz: [{ produto: "leite", proporcao: 1 }],
-        custoVariavelPorUnidade: faixa(reais(1.1), VARIACAO_CUSTOS),
+        custoVariavelPorUnidade: faixa(reais(1.96), VARIACAO_CUSTOS),
         qualidadeBase: faixa(50, 0.1),
-        capex: reais(300_000),
+        capex: reais(98_000),
         prazoConstrucaoDias: 30,
-        custoFixoMensal: reais(8_000),
+        custoFixoMensal: reais(1_440),
         capacidadeUnidadesPorDia: 400,
         diasDeArmazenagem: 10,
         vidaUtilMeses: 120,
@@ -128,11 +131,11 @@ export const PRESET_CADEIA_MINIMA: Preset = {
         nome: "Frango",
         tipo: "pecuaria",
         produz: [{ produto: "frango_congelado", proporcao: 1 }],
-        custoVariavelPorUnidade: faixa(reais(3.5), VARIACAO_CUSTOS),
+        custoVariavelPorUnidade: faixa(reais(7.35), VARIACAO_CUSTOS),
         qualidadeBase: faixa(50, 0.1),
-        capex: reais(250_000),
+        capex: reais(275_000),
         prazoConstrucaoDias: 25,
-        custoFixoMensal: reais(7_000),
+        custoFixoMensal: reais(4_050),
         capacidadeUnidadesPorDia: 300,
         diasDeArmazenagem: 10,
         vidaUtilMeses: 120,
@@ -142,11 +145,11 @@ export const PRESET_CADEIA_MINIMA: Preset = {
         nome: "Morango",
         tipo: "lavoura",
         produz: [{ produto: "morango", proporcao: 1 }],
-        custoVariavelPorUnidade: faixa(reais(6), VARIACAO_CUSTOS),
+        custoVariavelPorUnidade: faixa(reais(12.29), VARIACAO_CUSTOS),
         qualidadeBase: faixa(50, 0.1),
-        capex: reais(200_000),
+        capex: reais(184_000),
         prazoConstrucaoDias: 20,
-        custoFixoMensal: reais(6_000),
+        custoFixoMensal: reais(2_700),
         capacidadeUnidadesPorDia: 120,
         diasDeArmazenagem: 10,
         vidaUtilMeses: 120,
@@ -156,17 +159,17 @@ export const PRESET_CADEIA_MINIMA: Preset = {
         nome: "Cana-de-açúcar",
         tipo: "lavoura",
         produz: [{ produto: "acucar", proporcao: 1 }],
-        custoVariavelPorUnidade: faixa(reais(1.6), VARIACAO_CUSTOS),
+        custoVariavelPorUnidade: faixa(reais(3.69), VARIACAO_CUSTOS),
         qualidadeBase: faixa(50, 0.1),
-        capex: reais(180_000),
+        capex: reais(184_000),
         prazoConstrucaoDias: 20,
-        custoFixoMensal: reais(5_000),
+        custoFixoMensal: reais(2_700),
         capacidadeUnidadesPorDia: 400,
         diasDeArmazenagem: 10,
         vidaUtilMeses: 120,
       },
     ],
-    experiencia: { ganhoQualidadePorMes: 1.5, qualidadeMaxima: 90 },
+    experiencia: { ganhoQualidadePorMes: 0.3, qualidadeMaxima: 90 },
     // Mesma conversão para qualquer troca de atividade (decisão do autor, 02/10/2026).
     conversao: { custo: reais(40_000), prazoDias: 10 },
     cooperativa: { fatorPiso: 0.6 },

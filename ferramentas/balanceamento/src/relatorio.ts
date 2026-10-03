@@ -22,7 +22,7 @@ export interface InfoExecucao {
 
 const reais = (x: number) => `R$ ${x.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
 
-export function relatorioMarkdown(info: InfoExecucao, metricas: Metricas): string {
+export function relatorioMarkdown(info: InfoExecucao, metricas: Metricas, extras: { economiaDasAtividades?: string } = {}): string {
   const linhas: string[] = [];
   linhas.push(`# Balanceamento — ${info.presetId} (${info.confronto})`, "");
   if (info.diagnostico) {
@@ -49,7 +49,7 @@ export function relatorioMarkdown(info: InfoExecucao, metricas: Metricas): strin
   linhas.push(`| Desempenho | ${info.ticksSimulados.toLocaleString("pt-BR")} ticks em ${info.duracaoSegundos.toFixed(1)} s (${Math.round(info.ticksSimulados / Math.max(info.duracaoSegundos, 1e-9)).toLocaleString("pt-BR")} ticks/s, ${info.trabalhadores} worker(s)) |`);
   linhas.push("");
 
-  linhas.push("## Critérios de aceite (seção 10.4)", "");
+  linhas.push(info.confronto === "cadeia" ? "## Critérios de aceite da cadeia (entrega 9; os gerais da seção 10.4 ficam como diagnóstico)" : "## Critérios de aceite (seção 10.4)", "");
   linhas.push("| Critério | Valor | Limite | Situação |", "|---|---|---|---|");
   const situacao = (c: Metricas["criterios"][number]) => (c.passou ? "ok" : c.diagnostico ? "fora (diagnóstico)" : "**FALHOU**");
   for (const c of metricas.criterios) linhas.push(`| ${c.descricao}${c.diagnostico ? " *(diagnóstico)*" : ""} | ${c.valor} | ${c.limite} | ${situacao(c)} |`);
@@ -70,6 +70,10 @@ export function relatorioMarkdown(info: InfoExecucao, metricas: Metricas): strin
     "",
   );
   linhas.push("Vitória = maior lucro acumulado no mercado ao fim do horizonte (decisão 7); empate pelo id da empresa.", "");
+  if (extras.economiaDasAtividades) {
+    linhas.push("## Economia das atividades (valores base, só custo)", "", extras.economiaDasAtividades, "");
+    linhas.push("Líquido = uso × (valor ao preço do fornecedor − custo variável) − custo fixo, à capacidade nominal. Não inclui o efeito da qualidade (o ganho de qualidade com a experiência é um bônus a mais). Payback = capex ÷ líquido.", "");
+  }
   return linhas.join("\n");
 }
 

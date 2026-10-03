@@ -45,6 +45,7 @@ export {
   decidirRobo,
   diaDeDecisaoDosRobos,
   ESTRATEGIAS,
+  ESTRATEGIAS_DA_CADEIA,
   ESTRATEGIAS_DO_CONFRONTO,
   ESTRATEGIAS_RAZOAVEIS,
   type Estrategia,

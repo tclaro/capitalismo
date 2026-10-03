@@ -90,6 +90,8 @@ export function simularPartida(config: ConfigSimulacao): ResultadoSimulacao {
 
   let estado = criarPartida({
     preset: config.preset,
+    // O módulo da cadeia liga sozinho nos presets que trazem o bloco da cadeia (como na sala).
+    ...(config.preset.cadeia ? { modulos: ["cadeia_produtiva" as const] } : {}),
     semente: config.semente,
     mercados: Array.from({ length: quantidadeMercados }, (_, i) => ({ nome: `Mercado ${i + 1}` })),
     empresas: Array.from({ length: quantidadeMercados }).flatMap((_, m) =>
