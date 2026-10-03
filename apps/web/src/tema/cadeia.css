@@ -405,6 +405,9 @@
   overflow: hidden;
   min-height: 0;
 }
+.j-painel-cadeia > * {
+  min-width: 0;
+}
 .j-painel-titulo {
   margin: 0;
   display: flex;
@@ -535,6 +538,27 @@
   display: grid;
   gap: 0.3rem;
 }
+.j-opcoes.lado-a-lado {
+  grid-template-columns: 1fr 1fr;
+}
+.j-opcoes.lado-a-lado.uma {
+  grid-template-columns: 1fr;
+}
+.j-opcao.compacta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  padding: 0.25rem 0.5rem;
+  min-width: 0;
+}
+.j-opcao.compacta b {
+  font-size: 0.78rem;
+}
+.j-opcao.compacta small {
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
 .j-opcao {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -658,9 +682,16 @@
 }
 .j-tabela-atacado {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
 }
+.j-tabela-atacado th:nth-child(1) { width: 28%; }
+.j-tabela-atacado th:nth-child(2) { width: 17%; }
+.j-tabela-atacado th:nth-child(3) { width: 11%; }
+.j-tabela-atacado th:nth-child(4) { width: 21%; }
+.j-tabela-atacado th:nth-child(5) { width: 23%; }
+.j-tabela-atacado td:last-child { overflow: visible; }
 .j-tabela-atacado th {
   text-align: left;
   font-size: 0.66rem;
@@ -670,9 +701,11 @@
   padding: 0.25rem 0.35rem;
 }
 .j-tabela-atacado td {
-  padding: 0.22rem 0.35rem;
+  padding: 0.22rem 0.25rem;
   border-top: 1px solid var(--cor-borda);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .j-tabela-atacado .d {
   text-align: right;
@@ -688,9 +721,9 @@
   background: var(--cor-fundo-alerta);
 }
 .j-tabela-atacado .botao {
-  min-height: 1.6rem;
-  padding: 0 0.5rem;
-  font-size: 0.72rem;
+  min-height: 1.5rem;
+  padding: 0 0.3rem;
+  font-size: 0.7rem;
 }
 .j-pedido {
   display: grid;

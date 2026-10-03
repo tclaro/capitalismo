@@ -47,10 +47,10 @@ export function PainelDoAtacado({ v, comandar }: { v: VisaoAluno; comandar: Coma
   const pendentePedido = temPendencia(v.pendentes, "comprarNoAtacado", (d) => d.tipo === "comprarNoAtacado" && d.produto === m.produto);
 
   const linhas: Linha[] = [
-    { chave: "externo", quem: "Fornecedor externo (teto)", preco: m.precoFornecedor, qualidade: m.qualidadeFornecedor, quantidade: "ilimitado", classe: "faixa" },
+    { chave: "externo", quem: "Fornecedor (teto)", preco: m.precoFornecedor, qualidade: m.qualidadeFornecedor, quantidade: "ilimitado", classe: "faixa" },
     ...outros.map((o): Linha => ({ chave: o.vendedor, quem: nomes.get(o.vendedor) ?? o.vendedor, preco: o.preco, qualidade: o.qualidade, quantidade: `${formatarNumero(o.quantidadeMensal)}/mês`, classe: "", vendedor: o.vendedor })),
     ...(minha && minha.preco !== null ? [{ chave: "nos", quem: "Vocês", preco: minha.preco, qualidade: m.estoque.qualidade, quantidade: `${formatarNumero(minha.quantidadeMensal)}/mês`, classe: "nos" } satisfies Linha] : []),
-    { chave: "coop", quem: "Cooperativa (piso)", preco: m.precoCooperativa, qualidade: null, quantidade: "só por ordem", classe: "faixa" },
+    { chave: "coop", quem: "Cooperativa (piso)", preco: m.precoCooperativa, qualidade: null, quantidade: "por ordem", classe: "faixa" },
   ];
   // Do mais caro (teto) ao mais barato (piso); empate: a ordem em que entraram.
   linhas.sort((a, b) => b.preco - a.preco);
@@ -75,7 +75,7 @@ export function PainelDoAtacado({ v, comandar }: { v: VisaoAluno; comandar: Coma
               Preço
             </th>
             <th scope="col" className="d">
-              Qualid.
+              Qual.
             </th>
             <th scope="col" className="d">
               Oferta

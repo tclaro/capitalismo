@@ -374,6 +374,37 @@ describe("fazenda: produção, oferta no atacado e cooperativa", () => {
   });
 });
 
+describe("fazenda com dois coprodutos (gado de corte)", () => {
+  test("uma matéria-prima por vez, em abas: carne e couro; cada aba tem a sua oferta e a sua cooperativa", async () => {
+    const s = salaDaCadeia(45);
+    const v = comEstoque(comEstoque(s.visaoAluno(s.membros.ana), "carne_bovina_congelada", 300), "couro", 150);
+    const r = await jogo(v);
+    await clicar(cartao(r, "faz:faz_04"));
+    const abas = [...painel(r).querySelectorAll('[aria-label="Matéria-prima da fazenda"] button')];
+    expect(abas.map((b) => b.textContent)).toEqual(["Carne bovina congelada", "Couro"]);
+    expect(abas.map((b) => b.getAttribute("aria-selected"))).toEqual(["true", "false"]);
+    expect(painel(r).querySelectorAll(".j-venda-mp")).toHaveLength(1);
+    expect(texto(painel(r), ".j-venda-mp h3")).toContain("Carne bovina congelada");
+    expect(painel(r).querySelector("#campo-preco-atacado-carne_bovina_congelada")).not.toBeNull();
+    expect(painel(r).querySelector("#campo-preco-atacado-couro")).toBeNull();
+
+    await clicar(abas[1]!);
+    expect(painel(r).querySelectorAll(".j-venda-mp")).toHaveLength(1);
+    expect(texto(painel(r), ".j-venda-mp h3")).toContain("Couro");
+    expect(painel(r).querySelector("#campo-preco-atacado-couro")).not.toBeNull();
+    await dom.digitar(painel(r).querySelector('input[aria-label^="Quantidade de Couro"]'), "40");
+    await clicar(dom.botao(painel(r), "Vender"));
+    expect(ultimoComando()).toMatchObject({ decisoes: [{ tipo: "venderParaCooperativa", produto: "couro", quantidade: 40 }] });
+  });
+
+  test("fazenda de um produto só não mostra abas", async () => {
+    const s = salaDaCadeia(45);
+    const r = await jogo(s.visaoAluno(s.membros.ana));
+    expect(painel(r).querySelector('[aria-label="Matéria-prima da fazenda"]')).toBeNull();
+    expect(painel(r).querySelectorAll(".j-venda-mp")).toHaveLength(1);
+  });
+});
+
 describe("troca de atividade", () => {
   async function abrirTroca(estoques: Record<string, number> = { carne_bovina_congelada: 300, couro: 150 }) {
     const s = salaDaCadeia(45);
@@ -497,11 +528,11 @@ describe("atacado: comprar das outras equipes", () => {
     expect(r.querySelector(".j-chip.sel")!.textContent).toBe("Leite"); // a primeira com ofertas
     const linhas = [...r.querySelectorAll(".j-tabela-atacado tbody tr")].map((tr) => [...tr.querySelectorAll("td")].slice(0, 4).map((td) => td.textContent));
     const robo = v.visao.concorrentes.find((c) => c.id === "emp_03")!.nome;
-    expect(linhas.map((l) => l[0])).toEqual(["Fornecedor externo (teto)", "Beta", robo.includes("(robô)") ? robo : `${robo} (robô)`, "Cooperativa (piso)"]);
+    expect(linhas.map((l) => l[0])).toEqual(["Fornecedor (teto)", "Beta", robo.includes("(robô)") ? robo : `${robo} (robô)`, "Cooperativa (piso)"]);
     expect(linhas[0]![1]).toBe(formatarReais(teto));
     expect(linhas[1]).toEqual(["Beta", formatarReais(250), "62", "3.000/mês"]);
     expect(linhas.at(-1)![1]).toBe(formatarReais(mp(v, "leite").precoCooperativa));
-    expect(linhas.at(-1)![3]).toBe("só por ordem");
+    expect(linhas.at(-1)![3]).toBe("por ordem");
     // Preço da cooperativa abaixo de todas as ofertas, e o teto acima.
     const precos = linhas.map((l) => Number(l[1]!.replace(/[^\d]/g, "")));
     expect([...precos].sort((a, b) => b - a)).toEqual(precos);
@@ -697,10 +728,12 @@ describe("loja", () => {
     const r = await jogo(v);
     await clicar(cartao(r, "loja"));
     expect(painel(r).querySelectorAll(".j-lista-loja li")).toHaveLength(v.visao.produtos.length);
+    // Uma origem por vez (para caber sem rolar): abas para carne e frango; quem é fabricado não tem origem de compra pronta.
+    expect([...painel(r).querySelectorAll('[aria-label="Produto que vem da fazenda"] button')].map((b) => b.textContent)).toEqual(["Carne bovina congelada", "Frango congelado"]);
     const carne = painel(r).querySelector('section[aria-label="Origem de Carne bovina congelada"]')!;
     expect(carne).not.toBeNull();
-    expect(painel(r).querySelector('section[aria-label="Origem de Frango congelado"]')).not.toBeNull();
-    expect(painel(r).querySelector('section[aria-label^="Origem de Leite"]')).toBeNull(); // quem é fabricado não tem origem de compra pronta
+    expect(painel(r).querySelector('section[aria-label="Origem de Frango congelado"]')).toBeNull();
+    expect(painel(r).querySelector('section[aria-label^="Origem de Leite"]')).toBeNull();
 
     const [fornecedor, propria] = [...carne.querySelectorAll("button")];
     expect(fornecedor!.getAttribute("aria-pressed")).toBe("true");
@@ -711,6 +744,11 @@ describe("loja", () => {
     expect(ultimoComando()).toMatchObject({ decisoes: [{ tipo: "produto", produto: "carne_bovina_congelada", compraMensal: 1200 }] });
     await responder(true);
 
+    // A aba do frango mostra a origem do frango, com o abastecimento próprio dele.
+    await clicar(dom.botao(painel(r), "Frango congelado"));
+    expect(painel(r).querySelector('section[aria-label="Origem de Carne bovina congelada"]')).toBeNull();
+    const frango = painel(r).querySelector('section[aria-label="Origem de Frango congelado"]')!;
+    expect(frango.querySelector("#campo-compraMensal-frango_congelado")).not.toBeNull();
     await clicar(painel(r).querySelector('li[data-produto="sapato"] button'));
     expect(r.querySelector(".j-palco-cadeia")).toBeNull();
     expect(texto(r, ".j-palco h1")).toBe(v.visao.produtos.find((p) => p.id === "sapato")!.nome);

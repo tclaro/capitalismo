@@ -55,7 +55,7 @@ export function LinhaDeEstoque({ m, saida }: { m: MateriaPrima; saida?: string }
   return (
     <span className="j-bloco-est">
       <span className="j-linha-est" data-saida={saida}>
-        <span className={`nome${alerta ? " cheio" : ""}`} title={alerta ? `Estoque em 100% há ${m.diasCheio} dias` : undefined}>
+        <span className={`nome${alerta ? " cheio" : ""}`} title={alerta ? `${m.nome}: estoque em 100% há ${m.diasCheio} dias` : m.nome}>
           {m.nome}
         </span>
         <Celulas fracao={fracaoDoEstoque(m)} />

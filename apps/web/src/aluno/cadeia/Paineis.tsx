@@ -121,6 +121,8 @@ export function PainelDaFazenda({ v, comandar, fazenda, aoTrocar }: PropsDoPaine
   const pend = temPendencia(v.pendentes, "ajustarFazenda", (d) => d.tipo === "ajustarFazenda" && d.fazenda === fazenda.id);
   const trocaPendente = ef.trocas[fazenda.id];
   const mps = a.produz.flatMap((x) => materiaPrima(c, x.produto) ?? []);
+  const [escolhidaMp, setEscolhidaMp] = useState<string | null>(null);
+  const mpAtual = mps.find((m) => m.produto === escolhidaMp) ?? mps[0];
 
   return (
     <>
@@ -133,7 +135,7 @@ export function PainelDaFazenda({ v, comandar, fazenda, aoTrocar }: PropsDoPaine
         key={`producao-${fazenda.id}`}
         id="campo-producao-fazenda"
         rotulo="Produção por mês"
-        ajuda={`Quanto a fazenda produz por mês, em ${plural(unidade)}. A capacidade é ${formatarNumero(cap)} por mês; o estoque cheio para a produção, mas o custo fixo continua.`}
+        ajuda={`Quanto a fazenda produz por mês, em ${plural(unidade)}. A capacidade é ${formatarNumero(cap)} por mês; o estoque cheio para a produção, mas o custo fixo continua.${a.produz.length > 1 ? ` Esta atividade produz ${a.produz.map((x) => `${formatarNumero(x.proporcao, 1)} ${materiaPrima(c, x.produto)?.nome.toLowerCase() ?? x.produto}`).join(" e ")} para cada ${unidade} de ${principal?.nome.toLowerCase()}; o custo é repartido entre eles.` : ""}`}
         sufixo={`${unidadeCurta(unidade)}/mês`}
         efetivo={formatarNumero(efetiva)}
         antes={pend ? formatarNumero(fazenda.producaoMensal) : null}
@@ -156,8 +158,16 @@ export function PainelDaFazenda({ v, comandar, fazenda, aoTrocar }: PropsDoPaine
           ["Custo fixo", `${reaisCurtos(a.custoFixoMensal)}/mês`],
         ]}
       />
-      {a.produz.length > 1 && <p className="j-dica">Esta atividade produz {a.produz.map((x) => `${formatarNumero(x.proporcao, 1)} ${materiaPrima(c, x.produto)?.nome.toLowerCase() ?? x.produto}`).join(" e ")} para cada {unidade} de {principal?.nome.toLowerCase()}. O custo é repartido entre eles.</p>}
-      {!fazenda.emObra && mps.map((m) => <VendaDaMateriaPrima key={m.produto} v={v} comandar={comandar} m={m} />)}
+      {!fazenda.emObra && mps.length > 1 && (
+        <div className="j-chips" role="tablist" aria-label="Matéria-prima da fazenda" title={`Esta atividade produz ${a.produz.map((x) => `${formatarNumero(x.proporcao, 1)} ${materiaPrima(c, x.produto)?.nome.toLowerCase() ?? x.produto}`).join(" e ")} para cada ${unidade} de ${principal?.nome.toLowerCase()}. O custo é repartido entre eles.`}>
+          {mps.map((m) => (
+            <button key={m.produto} type="button" role="tab" aria-selected={m.produto === mpAtual?.produto} className={`j-chip${m.produto === mpAtual?.produto ? " sel" : ""}`} onClick={() => setEscolhidaMp(m.produto)}>
+              {m.nome}
+            </button>
+          ))}
+        </div>
+      )}
+      {!fazenda.emObra && mpAtual && <VendaDaMateriaPrima key={mpAtual.produto} v={v} comandar={comandar} m={mpAtual} />}
       <button type="button" className="botao" disabled={!editavel || fazenda.emObra || fazenda.emConversao || trocaPendente !== undefined} onClick={() => aoTrocar(fazenda)}>
         Trocar atividade…
       </button>
@@ -308,29 +318,25 @@ export function PainelDaFabrica({ v, comandar, produto, aoIrParaProdutos }: Prop
               <span className="j-origem-nome">
                 {nome} <small>{formatarNumero(porUnidade, 2)} {mp ? unidadeCurta(mp.unidade) : ""} por {p.unidade}</small>
               </span>
-              <span className="j-opcoes">
+              <span className={`j-opcoes lado-a-lado${mp && produzivel(c, i.produto) ? "" : " uma"}`}>
                 {mp && produzivel(c, i.produto) && (
-                  <button type="button" className={`j-opcao${escolha === "propria" ? " sel" : ""}`} aria-pressed={escolha === "propria"} disabled={!editavel} onClick={() => escolher(i.produto, nome, "propria")}>
-                    <span>
-                      <b>Estoque próprio</b>
-                      <small>{mp.estoque.quantidade > 0 ? `${formatarNumero(mp.estoque.quantidade)} ${unidadeCurta(mp.unidade)} em estoque` : "sem estoque agora"}</small>
-                    </span>
-                    <span className="preco">
-                      {custoMedio === null ? "—" : formatarReais(Math.round(custoMedio))}
-                      <small>qualidade {formatarNumero(mp.estoque.qualidade, 0)}</small>
-                    </span>
-                  </button>
+                  <OpcaoDeOrigem
+                    nome="Estoque próprio"
+                    linha1={mp.estoque.quantidade > 0 ? `${formatarNumero(mp.estoque.quantidade)} ${unidadeCurta(mp.unidade)} em estoque` : "sem estoque agora"}
+                    linha2={`${custoMedio === null ? "—" : formatarReais(Math.round(custoMedio))} · qual. ${formatarNumero(mp.estoque.qualidade, 0)}`}
+                    selecionada={escolha === "propria"}
+                    desabilitado={!editavel}
+                    aoClicar={() => escolher(i.produto, nome, "propria")}
+                  />
                 )}
-                <button type="button" className={`j-opcao${escolha === "fornecedor" ? " sel" : ""}`} aria-pressed={escolha === "fornecedor"} disabled={!editavel || !(mp && produzivel(c, i.produto))} onClick={() => escolher(i.produto, nome, "fornecedor")}>
-                  <span>
-                    <b>Fornecedor externo</b>
-                    <small>sempre disponível</small>
-                  </span>
-                  <span className="preco">
-                    {formatarReais(i.precoFornecedor)}
-                    <small>qualidade {formatarNumero(i.qualidadeFornecedor, 0)}</small>
-                  </span>
-                </button>
+                <OpcaoDeOrigem
+                  nome="Fornecedor externo"
+                  linha1="sempre disponível"
+                  linha2={`${formatarReais(i.precoFornecedor)} · qual. ${formatarNumero(i.qualidadeFornecedor, 0)}`}
+                  selecionada={escolha === "fornecedor"}
+                  desabilitado={!editavel || !(mp && produzivel(c, i.produto))}
+                  aoClicar={() => escolher(i.produto, nome, "fornecedor")}
+                />
               </span>
             </div>
           );
@@ -340,7 +346,7 @@ export function PainelDaFabrica({ v, comandar, produto, aoIrParaProdutos }: Prop
 
       <Resumo
         itens={[
-          ["Custo por " + p.unidade, custo === null ? "—" : formatarReais(Math.round(custo))],
+          ["Custo/" + p.unidade, custo === null ? "—" : formatarReais(Math.round(custo))],
           ["Qualidade", formatarNumero(o.qualidade, 0)],
           ["Capacidade", `${formatarNumero(o.capacidadeProducaoPorTick * v.visao.ticksPorMes)}/mês`],
         ]}
@@ -352,6 +358,17 @@ export function PainelDaFabrica({ v, comandar, produto, aoIrParaProdutos }: Prop
         </button>
       </div>
     </>
+  );
+}
+
+/** Botão de origem (fornecedor ou estoque próprio): nome e duas linhas curtas, para ficarem dois por linha. */
+function OpcaoDeOrigem({ nome, linha1, linha2, selecionada, desabilitado, aoClicar }: { nome: string; linha1: string; linha2: string; selecionada: boolean; desabilitado: boolean; aoClicar: () => void }) {
+  return (
+    <button type="button" className={`j-opcao compacta${selecionada ? " sel" : ""}`} aria-pressed={selecionada} disabled={desabilitado} onClick={aoClicar}>
+      <b>{nome}</b>
+      <small>{linha1}</small>
+      <small>{linha2}</small>
+    </button>
   );
 }
 
@@ -479,6 +496,8 @@ export function PainelDaLoja({ v, comandar, aoIrParaProdutos }: PropsDoPainel & 
   const envio = useEnvio(comandar);
   const vendendo = produtosEmVenda(v);
   const daFazenda = v.visao.produtos.filter((p) => vemDaFazenda(c, p));
+  const [produtoDaOrigem, setProdutoDaOrigem] = useState<string | null>(null);
+  const escolhido = daFazenda.find((p) => p.id === produtoDaOrigem) ?? daFazenda[0];
   const vendidoOntem = e.ofertas.reduce((s, o) => s + o.vendasAnterior, 0);
   const uso = e.capacidadeVendaPorTick > 0 ? Math.min(1, vendidoOntem / e.capacidadeVendaPorTick) : 0;
 
@@ -504,37 +523,46 @@ export function PainelDaLoja({ v, comandar, aoIrParaProdutos }: PropsDoPainel & 
           );
         })}
       </ul>
-      {daFazenda.map((p) => {
+      {daFazenda.length > 1 && (
+        <div className="j-chips" role="tablist" aria-label="Produto que vem da fazenda">
+          {daFazenda.map((p) => (
+            <button key={p.id} type="button" role="tab" aria-selected={p.id === escolhido?.id} className={`j-chip${p.id === escolhido?.id ? " sel" : ""}`} onClick={() => setProdutoDaOrigem(p.id)}>
+              {p.nome}
+            </button>
+          ))}
+        </div>
+      )}
+      {escolhido && (() => {
+        const p = escolhido;
         const origem = origemEfetiva(v, p.id).compraPronta;
         const mp = materiaPrima(c, p.id);
         return (
           <section key={p.id} className="j-origens" aria-label={`Origem de ${p.nome}`}>
             <span className="j-rotulo">{p.nome} · de onde vem</span>
-            <span className="j-opcoes">
-              <button type="button" className={`j-opcao${origem === "fornecedor" ? " sel" : ""}`} aria-pressed={origem === "fornecedor"} disabled={!v.relogio.podeEditar} onClick={() => origem !== "fornecedor" && void envio([{ tipo: "produto", produto: p.id, origemCompraPronta: "fornecedor" }], `${p.nome} agora vem do fornecedor externo. Vale amanhã.`)}>
-                <span>
-                  <b>Fornecedor externo</b>
-                  <small>compra pronto</small>
-                </span>
-                <span className="preco">{p.fornecedor ? formatarReais(p.fornecedor.preco) : "—"}</span>
-              </button>
-              <button type="button" className={`j-opcao${origem === "propria" ? " sel" : ""}`} aria-pressed={origem === "propria"} disabled={!v.relogio.podeEditar} onClick={() => origem !== "propria" && void envio([{ tipo: "produto", produto: p.id, origemCompraPronta: "propria" }], `${p.nome} agora vem das fazendas de vocês. Vale amanhã.`)}>
-                <span>
-                  <b>Fazenda própria</b>
-                  <small>{mp ? `${formatarNumero(mp.estoque.quantidade)} ${unidadeCurta(mp.unidade)} em estoque` : "sem estoque"}</small>
-                </span>
-                <span className="preco">{mp && mp.estoque.quantidade > 0 ? formatarReais(Math.round(mp.estoque.valor / mp.estoque.quantidade)) : "—"}</span>
-              </button>
+            <span className="j-opcoes lado-a-lado">
+              <OpcaoDeOrigem
+                nome="Fornecedor externo"
+                linha1="compra pronto"
+                linha2={p.fornecedor ? formatarReais(p.fornecedor.preco) : "—"}
+                selecionada={origem === "fornecedor"}
+                desabilitado={!v.relogio.podeEditar}
+                aoClicar={() => origem !== "fornecedor" && void envio([{ tipo: "produto", produto: p.id, origemCompraPronta: "fornecedor" }], `${p.nome} agora vem do fornecedor externo. Vale amanhã.`)}
+              />
+              <OpcaoDeOrigem
+                nome="Fazenda própria"
+                linha1={mp ? `${formatarNumero(mp.estoque.quantidade)} ${unidadeCurta(mp.unidade)} em estoque` : "sem estoque"}
+                linha2={mp && mp.estoque.quantidade > 0 ? formatarReais(Math.round(mp.estoque.valor / mp.estoque.quantidade)) : "—"}
+                selecionada={origem === "propria"}
+                desabilitado={!v.relogio.podeEditar}
+                aoClicar={() => origem !== "propria" && void envio([{ tipo: "produto", produto: p.id, origemCompraPronta: "propria" }], `${p.nome} agora vem das fazendas de vocês. Vale amanhã.`)}
+              />
             </span>
-            <CampoDeProduto v={v} comandar={comandar} produto={p.id} campo="compraMensal" rotulo="Abastecimento por mês" sufixo={`${plural(p.unidade)}/mês`} ajuda={`Quanto a loja recebe por mês, da origem escolhida. O que faltar na fazenda própria vem do fornecedor externo.`} />
+            <CampoDeProduto v={v} comandar={comandar} produto={p.id} campo="compraMensal" rotulo="Abastecimento por mês" sufixo={`${plural(p.unidade)}/mês`} ajuda="Quanto a loja recebe por mês, da origem escolhida. O que faltar na fazenda própria vem do fornecedor externo." />
           </section>
         );
-      })}
-      <div className="j-medidor" title="Uso da capacidade de venda">
-        <i style={{ width: `${(uso * 100).toFixed(0)}%` }} />
-      </div>
+      })()}
       <small className="j-dica-curta">
-        Capacidade de venda: {formatarNumero(e.capacidadeVendaPorTick)} itens/dia · {vendendo.length} produto(s) à venda
+        Capacidade de venda: {formatarNumero(e.capacidadeVendaPorTick)} itens/dia, usando {formatarNumero(uso * 100, 0)}% · {vendendo.length} produto(s) à venda
       </small>
     </>
   );
